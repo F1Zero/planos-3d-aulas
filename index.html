@@ -41,7 +41,17 @@
   .side .scroll{overflow:auto;flex:1;min-height:0}
   .stage{flex:1;position:relative;min-width:0;background:#dfe3e8}
   #gl{display:block;width:100%;height:100%}
-  .hint{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:6px 9px;border-radius:7px;max-width:60%;line-height:1.4}
+  .hint{position:absolute;left:12px;bottom:12px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:6px 9px;border-radius:7px;max-width:52%;line-height:1.5}
+  .nav{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;align-items:center;gap:6px;user-select:none;z-index:6}
+  .nav .grid{display:grid;gap:3px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:10px;padding:5px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+  .nav .compass{grid-template-columns:repeat(3,30px);grid-template-rows:repeat(3,30px)}
+  .nav .pan{grid-template-columns:repeat(3,26px);grid-template-rows:repeat(3,26px)}
+  .nav .zoom{grid-template-columns:30px 30px}
+  .nav button{border:1px solid var(--line);background:#fff;border-radius:7px;font-size:14px;line-height:1;display:grid;place-items:center;color:var(--guinda);cursor:pointer;padding:0;height:100%;width:100%}
+  .nav button:hover{background:var(--guinda);color:#fff}
+  .nav .zoom button{height:28px;font-size:16px}
+  .nav .cap{font-size:9px;color:#fff;background:rgba(0,0,0,.45);padding:1px 6px;border-radius:10px}
+  .nav .empty{visibility:hidden}
   .tree{padding:6px}
   .tree .space{border:1px solid var(--line);border-radius:8px;margin:6px;overflow:hidden}
   .tree .space>.row{display:flex;align-items:center;gap:6px;padding:7px 9px;background:var(--panel2);cursor:pointer}
@@ -156,7 +166,24 @@
     <div class="stage">
       <canvas id="gl"></canvas>
       <div class="hint">
-        <b>Clic</b> selecciona · <b>arrastrar</b> mueve · <kbd>R</kbd> girar 90° · <kbd>Supr</kbd> borrar · <kbd>D</kbd> duplicar · <kbd>Esc</kbd> deseleccionar · rueda: zoom · botón derecho: orbitar
+        <b>Editar:</b> clic selecciona · arrastrar mueve mobiliario · <kbd>R</kbd> girar 90° · <kbd>Supr</kbd> borrar · <kbd>D</kbd> duplicar<br>
+        <b>Vista:</b> botón derecho gira · botón central o flechas <kbd>←↑↓→</kbd> desplaza · rueda acerca · o los controles ↘
+      </div>
+      <div class="nav">
+        <div class="cap">Girar / Inclinar</div>
+        <div class="grid compass">
+          <span class="empty"></span><button data-nav="tilt-up" title="Inclinar: ver más desde arriba">▲</button><span class="empty"></span>
+          <button data-nav="rot-left" title="Girar a la izquierda">◀</button><button data-nav="home" title="Centrar la vista">⌂</button><button data-nav="rot-right" title="Girar a la derecha">▶</button>
+          <span class="empty"></span><button data-nav="tilt-down" title="Inclinar: ver más de frente">▼</button><span class="empty"></span>
+        </div>
+        <div class="grid pan">
+          <span class="empty"></span><button data-nav="pan-up" title="Mover hacia arriba">↑</button><span class="empty"></span>
+          <button data-nav="pan-left" title="Mover a la izquierda">←</button><span class="empty"></span><button data-nav="pan-right" title="Mover a la derecha">→</button>
+          <span class="empty"></span><button data-nav="pan-down" title="Mover hacia abajo">↓</button><span class="empty"></span>
+        </div>
+        <div class="grid zoom">
+          <button data-nav="zoom-in" title="Acercar">+</button><button data-nav="zoom-out" title="Alejar">−</button>
+        </div>
       </div>
     </div>
 
@@ -184,6 +211,7 @@
     <p>Herramienta para diseñar en 3D espacios educativos (aula, biblioteca, cómputo, laboratorio, área administrativa, área docente, baños, cocina, bodega) a partir de <b>plantillas por tipo y tamaño</b> con su mobiliario por defecto. Cada aula incluye 30 mesas y sillas más el escritorio y la silla del maestro.</p>
     <p>Permite mover, girar, duplicar y agregar mobiliario, ver el modelo en 360° y exportarlo a <b>GLB</b> (para Blender, visores web, etc.), imagen <b>PNG</b> o guardar/abrir el proyecto en <b>JSON</b> para seguir editando.</p>
     <div class="meta">
+      <b>Autor</b><span>Fernando Eduardo Balmes Moguel</span>
       <b>Dependencia</b><span>Depto. de Estudios Territoriales · SEGEY</span>
       <b>Versión</b><span>1.0</span>
       <b>Tecnología</b><span>Three.js (WebGL)</span>
@@ -220,7 +248,7 @@ const camera = new THREE.PerspectiveCamera(55,1,0.1,2000);
 camera.position.set(12,13,15);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = .08;
-controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.PAN, RIGHT: THREE.MOUSE.ROTATE };
 controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
 controls.maxPolarAngle = Math.PI*0.495;
 
@@ -629,6 +657,12 @@ window.addEventListener('keydown',e=>{
   else if(e.key==='r'||e.key==='R'){ rotateSel(e.shiftKey?-90:90); }
   else if((e.key==='d'||e.key==='D')&&!e.ctrlKey){ duplicateSel(); }
   else if(e.key==='Escape'){ select(null); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); panView(0,-1); }
+  else if(e.key==='ArrowDown'){ e.preventDefault(); panView(0,1); }
+  else if(e.key==='ArrowLeft'){ e.preventDefault(); panView(-1,0); }
+  else if(e.key==='ArrowRight'){ e.preventDefault(); panView(1,0); }
+  else if(e.key==='+'||e.key==='='){ dollyView(0.9); }
+  else if(e.key==='-'||e.key==='_'){ dollyView(1.1); }
 });
 
 /* ============================ Panel: árbol =========================== */
@@ -764,6 +798,35 @@ function frameAll(){
   const b=new THREE.Box3().setFromObject(worldGroup); const c=b.getCenter(new THREE.Vector3()); const s=b.getSize(new THREE.Vector3());
   const r=Math.max(s.x,s.z,6); controls.target.copy(c); camera.position.set(c.x+r*0.9,r*0.9+6,c.z+r*1.1); controls.update();
 }
+
+/* ============================ Navegación 3D (estilo Google Earth) =========================== */
+function orbitView(daz,dpol){
+  const off=camera.position.clone().sub(controls.target);
+  const s=new THREE.Spherical().setFromVector3(off);
+  s.theta+=daz; s.phi=Math.max(0.08,Math.min(controls.maxPolarAngle, s.phi+dpol));
+  off.setFromSpherical(s); camera.position.copy(controls.target).add(off); controls.update();
+}
+function dollyView(f){ const off=camera.position.clone().sub(controls.target); off.setLength(Math.max(1.2,Math.min(400,off.length()*f))); camera.position.copy(controls.target).add(off); controls.update(); }
+function panView(dx,dz){
+  const step=camera.position.distanceTo(controls.target)*0.06;
+  const fwd=new THREE.Vector3(); camera.getWorldDirection(fwd); fwd.y=0; fwd.normalize();
+  const right=new THREE.Vector3().crossVectors(fwd,new THREE.Vector3(0,1,0)).normalize();
+  const mv=new THREE.Vector3().addScaledVector(right,dx*step).addScaledVector(fwd,-dz*step);
+  camera.position.add(mv); controls.target.add(mv); controls.update();
+}
+const NAV={
+  'rot-left':()=>orbitView(-5*DEG,0),'rot-right':()=>orbitView(5*DEG,0),
+  'tilt-up':()=>orbitView(0,-4*DEG),'tilt-down':()=>orbitView(0,4*DEG),
+  'zoom-in':()=>dollyView(0.92),'zoom-out':()=>dollyView(1.08),
+  'pan-up':()=>panView(0,-1),'pan-down':()=>panView(0,1),'pan-left':()=>panView(-1,0),'pan-right':()=>panView(1,0),
+  'home':()=>frameAll()
+};
+document.querySelectorAll('.nav [data-nav]').forEach(el=>{
+  let t; const act=NAV[el.dataset.nav]; if(!act) return;
+  const start=e=>{ e.preventDefault(); act(); clearInterval(t); if(el.dataset.nav!=='home') t=setInterval(act,55); };
+  const stop=()=>clearInterval(t);
+  el.addEventListener('pointerdown',start); el.addEventListener('pointerup',stop); el.addEventListener('pointerleave',stop); el.addEventListener('pointercancel',stop);
+});
 
 /* ============================ Loop / resize =========================== */
 function resize(){ const r=canvas.parentElement.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/r.height; camera.updateProjectionMatrix(); }
