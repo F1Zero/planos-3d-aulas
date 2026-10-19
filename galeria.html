@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fichas de espacios educativos · SEGEY</title>
+<style>
+  :root{--guinda:#7D1C4B;--guinda2:#9d2a60;--dorado:#BFA262;--dorado2:#d4b878;--bg:#eef0f3;--panel:#fff;--line:#dfe3e8;--txt:#1f2430;--muted:#6b7280}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI",system-ui,Arial,sans-serif;color:var(--txt);background:var(--bg)}
+  header{background:var(--guinda);color:#fff;padding:16px 22px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header .mark{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,var(--dorado),var(--dorado2));display:grid;place-items:center;color:var(--guinda);font-weight:800}
+  header h1{font-size:18px;margin:0}
+  header .sub{font-size:12px;opacity:.85}
+  header .spacer{flex:1}
+  header a button{background:#fff;color:var(--guinda);border:none;border-radius:8px;padding:9px 14px;font-weight:600;cursor:pointer;font-size:13px}
+  header a{text-decoration:none}
+  .intro{max-width:1100px;margin:22px auto 6px;padding:0 22px;color:var(--muted);font-size:14px;line-height:1.6}
+  .grid{max-width:1100px;margin:14px auto 40px;padding:0 22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 1px 3px rgba(0,0,0,.05);transition:transform .12s,box-shadow .12s}
+  .card:hover{transform:translateY(-3px);box-shadow:0 10px 26px rgba(125,28,75,.12)}
+  .card .top{height:92px;display:grid;place-items:center;font-size:46px;background:linear-gradient(135deg,#fbeef4,#f3e7ee);border-bottom:1px solid var(--line)}
+  .card .body{padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:7px}
+  .card h3{margin:0;font-size:16px;color:var(--guinda)}
+  .card .size{display:inline-block;align-self:flex-start;background:var(--dorado);color:#3a2e12;border-radius:20px;font-size:11px;padding:2px 9px;font-weight:600}
+  .card p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5;flex:1}
+  .card .act{display:flex;gap:8px;padding:0 16px 16px}
+  .card .act a{flex:1;text-decoration:none}
+  .card .act button{width:100%;border:1px solid var(--guinda);background:var(--guinda);color:#fff;border-radius:9px;padding:9px;font-weight:600;cursor:pointer;font-size:13px}
+  .card .act button:hover{background:var(--guinda2)}
+  footer{max-width:1100px;margin:0 auto 40px;padding:0 22px;color:var(--muted);font-size:12px;line-height:1.6}
+</style>
+</head>
+<body>
+<header>
+  <span class="mark">3D</span>
+  <div><h1>Fichas de espacios educativos</h1><div class="sub">Modelos genéricos 3D para presentación y edición · Depto. de Estudios Territoriales · SEGEY</div></div>
+  <div class="spacer"></div>
+  <a href="index.html"><button>🛠 Abrir editor completo</button></a>
+</header>
+
+<div class="intro">
+  Cada ficha abre un <b>modelo 3D genérico</b> del espacio con su mobiliario por defecto, listo para <b>presentar</b> y <b>editar</b>
+  (mover, girar, agregar o quitar mobiliario y exportar a GLB/PNG). Los salones usan el tamaño estándar <b>8×8 m</b>; puedes cambiarlo dentro del editor.
+</div>
+
+<div class="grid" id="grid"></div>
+
+<footer>
+  Al abrir un ejemplo entras al mismo editor con ese espacio precargado. Desde ahí puedes seguir agregando más espacios, cargar el plano real de una escuela por su CCT y exportar el conjunto.
+</footer>
+
+<script>
+const CARDS=[
+  {t:'aula',       i:'🧑‍🏫', n:'Aula',               sz:'8×8 m', d:'30 mesas y 30 sillas de alumno, escritorio y silla del maestro, pizarrón y puerta.'},
+  {t:'computo',    i:'💻',   n:'Aula de cómputo',    sz:'8×8 m', d:'Mesas de cómputo con PC y sillas acomodadas en “U”, escritorio del maestro y pizarrón.'},
+  {t:'laboratorio',i:'🔬',   n:'Laboratorio',        sz:'8×8 m', d:'Mesas de laboratorio con taburetes, pizarrón, lavabo y librero de reactivos.'},
+  {t:'biblioteca', i:'📚',   n:'Biblioteca',         sz:'9×7 m', d:'Libreros perimetrales y mesas redondas con sillas de lectura.'},
+  {t:'administrativa',i:'🗂️',n:'Área administrativa',sz:'7×6 m', d:'Escritorios de oficina con sillas de atención, archiveros y planta (dirección).'},
+  {t:'docente',    i:'👥',   n:'Área docente',       sz:'6×5 m', d:'Mesa de juntas con sillas, librero y alacena (sala de maestros).'},
+  {t:'banos',      i:'🚻',   n:'Baños',              sz:'5×3 m', d:'Inodoros y lavabos en batería.'},
+  {t:'cocina',     i:'🍽️',  n:'Cocina / comedor',   sz:'6×5 m', d:'Barra y alacenas, lavabo y mesa con sillas.'},
+  {t:'bodega',     i:'📦',   n:'Bodega',             sz:'6×4 m', d:'Estantería a ambos lados para almacenamiento.'},
+  {t:'generico',   i:'▦',    n:'Espacio vacío',      sz:'6×5 m', d:'Cuarto con muros y puerta para diseñar desde cero.'},
+];
+const g=document.getElementById('grid');
+for(const c of CARDS){
+  const el=document.createElement('div'); el.className='card';
+  el.innerHTML=`<div class="top">${c.i}</div>
+    <div class="body"><h3>${c.n}</h3><span class="size">${c.sz}</span><p>${c.d}</p></div>
+    <div class="act"><a href="index.html?demo=${c.t}"><button>Abrir ejemplo 3D</button></a></div>`;
+  g.appendChild(el);
+}
+</script>
+</body>
+</html>
