@@ -52,6 +52,12 @@
   .nav .zoom button{height:28px;font-size:16px}
   .nav .cap{font-size:9px;color:#fff;background:rgba(0,0,0,.45);padding:1px 6px;border-radius:10px}
   .nav .empty{visibility:hidden}
+  .apad{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:none;flex-direction:column;align-items:center;gap:4px;user-select:none;z-index:7}
+  .apad .cap{font-size:10px;color:#fff;background:var(--guinda);padding:2px 8px;border-radius:10px;margin-bottom:2px}
+  .apad .row{display:flex;gap:4px}
+  .apad button{width:42px;height:38px;border:1px solid var(--line);background:rgba(255,255,255,.94);border-radius:8px;color:var(--guinda);font-size:17px;cursor:pointer;display:grid;place-items:center}
+  .apad button:hover{background:var(--guinda);color:#fff}
+  .toolbar button.on{background:var(--guinda);color:#fff;border-color:var(--guinda)}
   .tree{padding:6px}
   .tree .space{border:1px solid var(--line);border-radius:8px;margin:6px;overflow:hidden}
   .tree .space>.row{display:flex;align-items:center;gap:6px;padding:7px 9px;background:var(--panel2);cursor:pointer}
@@ -151,6 +157,8 @@
       <button id="btnSnap" title="Ajustar a cuadrícula">Snap: on</button>
       <button id="btnTop" title="Vista superior">Planta</button>
       <button id="btnIso" title="Vista 3D">3D</button>
+      <button id="btnFP" title="Vista en primera persona (flechas para caminar)">👁 1ª persona</button>
+      <button id="btnAvatar" title="Agregar docente virtual (muévela con las flechas ← ↑ ↓ →)">👩‍🏫 Docente</button>
     </div>
     <div class="group">
       <label>Exportar</label>
@@ -193,6 +201,11 @@
         <div class="grid zoom">
           <button data-nav="zoom-in" title="Acercar">+</button><button data-nav="zoom-out" title="Alejar">−</button>
         </div>
+      </div>
+      <div id="avatarPad" class="apad">
+        <div class="cap">👩‍🏫 Docente · flechas</div>
+        <button data-mv="ArrowUp" title="Avanzar">↑</button>
+        <div class="row"><button data-mv="ArrowLeft" title="Girar izquierda">←</button><button data-mv="ArrowDown" title="Retroceder">↓</button><button data-mv="ArrowRight" title="Girar derecha">→</button></div>
       </div>
     </div>
 
@@ -510,7 +523,7 @@ function defaultObjects(sp){
   if(type==='aula'){
     add('pizarron',0,front+0.1,0);
     add('escritorio',-(w/2)+1.0, front+0.95, 0);
-    add('sillaMaestro',-(w/2)+1.0, front+1.65, 180);
+    add('sillaMaestro',-(w/2)+1.0, front+0.4, 0);
     add('puerta', w/2-0.6, back-0.06, 0);
     const L={preescolar:{table:'mesaPre',chair:'sillaPre',coff:0.5,halfX:0.62,px:1.3,pz:1.3},
              primaria:{table:'mesaPri',chair:'sillaPri',coff:0.45,halfX:0.45,px:1.0,pz:1.15},
@@ -531,7 +544,7 @@ function defaultObjects(sp){
     }
   } else if(type==='computo'){
     const n=sp.count||COUNTABLE.computo.def;
-    add('pizarron',0,front+0.1,0); add('escritorio',w/2-1.0,front+0.95,0); add('sillaMaestro',w/2-1.0,front+1.65,180); add('puerta',-(w/2)+0.6,back-0.06,0);
+    add('pizarron',0,front+0.1,0); add('escritorio',w/2-1.0,front+0.95,0); add('sillaMaestro',w/2-1.0,front+0.4,0); add('puerta',-(w/2)+0.6,back-0.06,0);
     gridFit(n,-w/2+0.8,w/2-0.8,front+2.3,back-1.0,1.3,1.4).forEach(p=>{ add('compu',p.x,p.z,0); add('sillaOfi',p.x,p.z+0.62,180); });
   } else if(type==='laboratorio'){
     const n=sp.count||COUNTABLE.laboratorio.def, tables=Math.max(1,Math.ceil(n/4));
@@ -736,10 +749,11 @@ canvas.addEventListener('pointercancel',endDrag);
 
 window.addEventListener('keydown',e=>{
   if(/input|select|textarea/i.test(document.activeElement.tagName)) return;
+  if(avatar && (e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight')){ keys.add(e.key); e.preventDefault(); return; }
   if((e.key==='Delete'||e.key==='Backspace')&&selId){ e.preventDefault(); deleteSel(); }
   else if(e.key==='r'||e.key==='R'){ rotateSel(e.shiftKey?-90:90); }
   else if((e.key==='d'||e.key==='D')&&!e.ctrlKey){ duplicateSel(); }
-  else if(e.key==='Escape'){ select(null); }
+  else if(e.key==='Escape'){ if(fpMode) exitFP(); else select(null); }
   else if(e.key==='ArrowUp'){ e.preventDefault(); panView(0,-1); }
   else if(e.key==='ArrowDown'){ e.preventDefault(); panView(0,1); }
   else if(e.key==='ArrowLeft'){ e.preventDefault(); panView(-1,0); }
@@ -847,8 +861,8 @@ document.getElementById('lvlPri').onclick=()=>addAula('primaria');
 document.getElementById('lvlSec').onclick=()=>addAula('secundaria');
 document.getElementById('btnGrid').onclick=()=>{grid.visible=!grid.visible;};
 document.getElementById('btnSnap').onclick=e=>{snap=!snap; e.target.textContent='Snap: '+(snap?'on':'off');};
-document.getElementById('btnTop').onclick=()=>{ const t=controls.target; camera.position.set(t.x,38,t.z+0.01); controls.update(); };
-document.getElementById('btnIso').onclick=()=>{ const t=controls.target; camera.position.set(t.x+14,15,t.z+16); controls.update(); };
+document.getElementById('btnTop').onclick=()=>{ exitFP(); const t=controls.target; camera.position.set(t.x,38,t.z+0.01); controls.update(); };
+document.getElementById('btnIso').onclick=()=>{ exitFP(); const t=controls.target; camera.position.set(t.x+14,15,t.z+16); controls.update(); };
 const DEF_SIZE={aula:[8,8],computo:[8,8],laboratorio:[8,8],biblioteca:[9,7],administrativa:[7,6],docente:[6,5],banos:[5,3],cocina:[6,5],bodega:[6,4],generico:[6,5]};
 document.getElementById('spaceType').onchange=e=>{ const t=e.target.value; const def=DEF_SIZE[t]; if(def){document.getElementById('spaceW').value=def[0];document.getElementById('spaceD').value=def[1];} const oc=document.getElementById('otherCount'); if(COUNTABLE[t]){ oc.disabled=false; oc.value=COUNTABLE[t].def; } else { oc.disabled=true; oc.value=''; } };
 document.getElementById('sz88').onclick=()=>{document.getElementById('spaceW').value=8;document.getElementById('spaceD').value=8;};
@@ -932,10 +946,57 @@ document.querySelectorAll('.nav [data-nav]').forEach(el=>{
   el.addEventListener('pointerdown',start); el.addEventListener('pointerup',stop); el.addEventListener('pointerleave',stop); el.addEventListener('pointercancel',stop);
 });
 
+/* ============================ Docente virtual + primera persona =========================== */
+const clock=new THREE.Clock(); const keys=new Set();
+let avatar=null, fpMode=false;
+function makeAvatar(){
+  const g=new THREE.Group(); g.userData.isAvatar=true;
+  const skin=mat(0xe8b394), blouse=mat(C.guinda), skirt=mat(0x32374a), hair=mat(0x2a2320), shoe=mat(0x20232a), leg=mat(0x3a3f4a);
+  g.add(cyl(0.07,0.5,leg,-0.1,0.25,0,8)); g.add(cyl(0.07,0.5,leg,0.1,0.25,0,8));
+  g.add(box(0.15,0.06,0.24,shoe,-0.1,0.03,-0.03)); g.add(box(0.15,0.06,0.24,shoe,0.1,0.03,-0.03));
+  const sk=new THREE.Mesh(new THREE.ConeGeometry(0.27,0.42,18),skirt); sk.position.set(0,0.62,0); sk.castShadow=true; g.add(sk);
+  g.add(box(0.34,0.44,0.2,blouse,0,0.98,0));
+  g.add(cyl(0.05,0.42,blouse,-0.22,0.98,0,8)); g.add(cyl(0.05,0.42,blouse,0.22,0.98,0,8));
+  g.add(cyl(0.045,0.06,skin,0,1.24,0,8));
+  const head=new THREE.Mesh(new THREE.SphereGeometry(0.12,18,14),skin); head.position.set(0,1.37,0); head.castShadow=true; g.add(head);
+  const hr=new THREE.Mesh(new THREE.SphereGeometry(0.135,18,14),hair); hr.position.set(0,1.4,0.02); g.add(hr);
+  g.add(box(0.05,0.04,0.05,skin,0,1.36,-0.12)); // nariz (frente hacia -Z)
+  g.userData.eye=1.45;
+  return g;
+}
+function spawnAvatar(){ if(avatar) return;
+  avatar=makeAvatar(); avatar.position.set(controls.target.x,0,controls.target.z); avatar.rotation.y=0; scene.add(avatar);
+  document.getElementById('avatarPad').style.display='flex'; document.getElementById('btnAvatar').classList.add('on');
+  toast('Docente agregada · muévela con ← ↑ ↓ →'); }
+function removeAvatar(){ if(!avatar) return; if(fpMode) exitFP(); scene.remove(avatar); disposeTree(avatar); avatar=null;
+  document.getElementById('avatarPad').style.display='none'; document.getElementById('btnAvatar').classList.remove('on'); }
+function toggleAvatar(){ avatar? removeAvatar(): spawnAvatar(); }
+function enterFP(){ if(!avatar) spawnAvatar(); fpMode=true; controls.enabled=false; avatar.visible=false; document.getElementById('btnFP').classList.add('on'); toast('Primera persona · flechas para caminar · “3D” para salir'); }
+function exitFP(){ if(!fpMode) return; fpMode=false; controls.enabled=true; if(avatar) avatar.visible=true; document.getElementById('btnFP').classList.remove('on'); }
+function toggleFP(){ fpMode? exitFP(): enterFP(); }
+function avatarFwd(){ const h=avatar.rotation.y; return new THREE.Vector3(-Math.sin(h),0,-Math.cos(h)); }
+function updateAvatar(dt){
+  const tr=2.2*dt, sp=2.8*dt; let h=avatar.rotation.y;
+  if(keys.has('ArrowLeft')) h+=tr; if(keys.has('ArrowRight')) h-=tr; avatar.rotation.y=h;
+  const f=avatarFwd(); let moving=false;
+  if(keys.has('ArrowUp')){ avatar.position.addScaledVector(f,sp); moving=true; }
+  if(keys.has('ArrowDown')){ avatar.position.addScaledVector(f,-sp); moving=true; }
+  avatar.userData.t=(avatar.userData.t||0)+(moving?dt*9:0);
+  avatar.position.y=Math.abs(Math.sin(avatar.userData.t))*0.02;
+}
+function updateFPCamera(){ const f=avatarFwd(); const eye=avatar.position.clone(); eye.y+=avatar.userData.eye; eye.addScaledVector(f,0.1); camera.position.copy(eye); const look=eye.clone().addScaledVector(f,3); look.y=eye.y-0.2; camera.lookAt(look); }
+document.getElementById('btnAvatar').onclick=toggleAvatar;
+document.getElementById('btnFP').onclick=toggleFP;
+document.querySelectorAll('#avatarPad [data-mv]').forEach(b=>{ const k=b.dataset.mv;
+  const dn=e=>{e.preventDefault(); if(!avatar) spawnAvatar(); keys.add(k);}; const up=()=>keys.delete(k);
+  b.addEventListener('pointerdown',dn); b.addEventListener('pointerup',up); b.addEventListener('pointerleave',up); b.addEventListener('pointercancel',up); });
+window.addEventListener('keyup',e=>keys.delete(e.key));
+window.addEventListener('blur',()=>keys.clear());
+
 /* ============================ Loop / resize =========================== */
 function resize(){ const r=canvas.parentElement.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/r.height; camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(canvas.parentElement); resize();
-(function loop(){ requestAnimationFrame(loop); controls.update(); sun.target.position.copy(controls.target); renderer.render(scene,camera); })();
+(function loop(){ requestAnimationFrame(loop); const dt=Math.min(0.05,clock.getDelta()); if(avatar) updateAvatar(dt); if(fpMode) updateFPCamera(); else controls.update(); sun.target.position.copy(controls.target); renderer.render(scene,camera); })();
 
 /* ============================ Toast =========================== */
 let toastT; const toastEl=document.getElementById('toast');
