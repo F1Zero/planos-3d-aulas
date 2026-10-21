@@ -449,15 +449,15 @@ function makePreTable(){ const g=new THREE.Group(); g.userData.kind='mesaPre'; /
 function makePriTable(){ const g=new THREE.Group(); g.userData.kind='mesaPri'; // trapezoidal 82x50, h57
   g.add(trapTop(0.82,0.62,0.5,0.028,C.wood,0.555));
   const lg=mat(C.guinda,{m:.3}); for(const[x,z] of [[-0.34,0.2],[0.34,0.2],[-0.24,-0.2],[0.24,-0.2]]) g.add(cyl(0.016,0.555,lg,x,0.2775,z,10)); return g; }
-function makeSecPupitre(){ // silla con paleta (pupitre) secundaria: concha vino + estructura negra + paleta a la derecha
+function makeSecPupitre(){ // pupitre secundaria: el alumno MIRA AL FRENTE (-Z); respaldo atrás (+Z); paleta al frente-derecha
   const g=new THREE.Group(); g.userData.kind='pupitreSec';
   const sh=mat(C.vino,{r:.6}), lg=mat(C.dark,{m:.5,r:.5});
-  g.add(box(0.44,0.04,0.46,sh,0,0.44,0));
-  const bk=box(0.42,0.34,0.05,sh,0,0.63,-0.21); bk.rotation.x=-0.07; g.add(bk);
+  g.add(box(0.44,0.04,0.46,sh,0,0.44,0));                          // asiento
+  const bk=box(0.42,0.34,0.05,sh,0,0.63,0.21); bk.rotation.x=0.07; g.add(bk);   // respaldo atrás (+Z)
   for(const sx of [-0.19,0.19]) for(const sz of [-0.2,0.2]) g.add(cyl(0.018,0.44,lg,sx,0.22,sz,8));
-  g.add(box(0.46,0.02,0.05,lg,0,0.18,0));                         // parrilla/papelera
-  g.add(box(0.48,0.03,0.34,mat(C.vino,{r:.6}),0.42,0.76,-0.02));  // paleta
-  const arm=cyl(0.014,0.4,lg,0.3,0.58,0.12,8); g.add(arm);        // brazo soporte paleta
+  g.add(box(0.46,0.02,0.05,lg,0,0.18,0.02));                       // parrilla/papelera
+  g.add(box(0.34,0.03,0.3,mat(C.vino,{r:.6}),0.3,0.76,-0.12));     // paleta (más chica y pegada al centro)
+  g.add(cyl(0.014,0.42,lg,0.24,0.55,-0.02,8));                     // brazo soporte paleta
   return g;
 }
 
@@ -514,7 +514,7 @@ function defaultObjects(sp){
     add('puerta', w/2-0.6, back-0.06, 0);
     const L={preescolar:{table:'mesaPre',chair:'sillaPre',coff:0.5,halfX:0.62,px:1.3,pz:1.3},
              primaria:{table:'mesaPri',chair:'sillaPri',coff:0.45,halfX:0.45,px:1.0,pz:1.15},
-             secundaria:{table:null,chair:'pupitreSec',coff:0,halfX:0.66,px:0.95,pz:1.05}}[nivel]
+             secundaria:{table:null,chair:'pupitreSec',coff:0,halfX:0.5,px:0.95,pz:1.05}}[nivel]
             ||{table:'mesaPri',chair:'sillaPri',coff:0.45,halfX:0.45,px:1.0,pz:1.15};
     // acomodo centrado que SIEMPRE cabe dentro del aula (se comprime si son muchos)
     const mX=L.halfX+0.1, x1=w/2-mX, UW=Math.max(0.3,2*x1);
