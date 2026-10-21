@@ -158,7 +158,6 @@
       <button id="btnTop" title="Vista superior">Planta</button>
       <button id="btnIso" title="Vista 3D">3D</button>
       <button id="btnFP" title="Vista en primera persona (flechas para caminar)">👁 1ª persona</button>
-      <button id="btnAvatar" title="Agregar docente virtual (muévela con las flechas ← ↑ ↓ →)">👩‍🏫 Docente</button>
     </div>
     <div class="group">
       <label>Exportar</label>
@@ -202,8 +201,8 @@
           <button data-nav="zoom-in" title="Acercar">+</button><button data-nav="zoom-out" title="Alejar">−</button>
         </div>
       </div>
-      <div id="avatarPad" class="apad">
-        <div class="cap">👩‍🏫 Docente · flechas</div>
+      <div id="walkPad" class="apad">
+        <div class="cap">🚶 Caminar · flechas</div>
         <button data-mv="ArrowUp" title="Avanzar">↑</button>
         <div class="row"><button data-mv="ArrowLeft" title="Girar izquierda">←</button><button data-mv="ArrowDown" title="Retroceder">↓</button><button data-mv="ArrowRight" title="Girar derecha">→</button></div>
       </div>
@@ -749,7 +748,7 @@ canvas.addEventListener('pointercancel',endDrag);
 
 window.addEventListener('keydown',e=>{
   if(/input|select|textarea/i.test(document.activeElement.tagName)) return;
-  if(avatar && (e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight')){ keys.add(e.key); e.preventDefault(); return; }
+  if(fpMode && (e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight')){ keys.add(e.key); e.preventDefault(); return; }
   if((e.key==='Delete'||e.key==='Backspace')&&selId){ e.preventDefault(); deleteSel(); }
   else if(e.key==='r'||e.key==='R'){ rotateSel(e.shiftKey?-90:90); }
   else if((e.key==='d'||e.key==='D')&&!e.ctrlKey){ duplicateSel(); }
@@ -946,76 +945,28 @@ document.querySelectorAll('.nav [data-nav]').forEach(el=>{
   el.addEventListener('pointerdown',start); el.addEventListener('pointerup',stop); el.addEventListener('pointerleave',stop); el.addEventListener('pointercancel',stop);
 });
 
-/* ============================ Docente virtual + primera persona =========================== */
+/* ============================ Vista en primera persona (caminar) =========================== */
 const clock=new THREE.Clock(); const keys=new Set();
-let avatar=null, fpMode=false;
-function makeAvatar(){ // docente low-poly (mira hacia -Z); hecha con primitivas (CC0)
-  const g=new THREE.Group(); g.userData.isAvatar=true;
-  const sph=(r,m,x,y,z,sx,sy,sz)=>{ const s=new THREE.Mesh(new THREE.SphereGeometry(r,18,14),m); s.position.set(x,y,z); if(sx!==undefined)s.scale.set(sx,sy,sz); s.castShadow=true; return s; };
-  const frus=(rt,rb,h,m,x,y,z)=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,18),m); c.position.set(x,y,z); c.castShadow=true; return c; };
-  const skin=mat(0xf0c3a0), blouse=mat(C.guinda), skirt=mat(0x2d3350), hair=mat(0x3a2a1e), shoe=mat(0x22262e), legM=mat(0xe3b58c), frame=mat(0x20232a), gold=mat(C.gold);
-  // zapatos + piernas
-  g.add(box(0.12,0.06,0.2,shoe,-0.09,0.03,-0.02)); g.add(box(0.12,0.06,0.2,shoe,0.09,0.03,-0.02));
-  g.add(cyl(0.055,0.46,legM,-0.09,0.29,0,10)); g.add(cyl(0.055,0.46,legM,0.09,0.29,0,10));
-  // falda + torso (blusa guinda)
-  g.add(frus(0.15,0.27,0.4,skirt,0,0.72,0));
-  g.add(frus(0.17,0.15,0.42,blouse,0,1.1,0));
-  g.add(box(0.07,0.1,0.02,gold,0.07,1.16,-0.15)); // gafete
-  // brazos + manos + libro
-  const armL=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.04,0.44,10),blouse); armL.position.set(-0.2,1.08,0); armL.rotation.z=0.14; armL.castShadow=true; g.add(armL);
-  const armR=armL.clone(); armR.position.x=0.2; armR.rotation.z=-0.14; g.add(armR);
-  g.add(sph(0.045,skin,-0.235,0.86,0)); g.add(sph(0.05,skin,0.235,0.9,-0.02));
-  g.add(box(0.15,0.04,0.11,mat(0x2e7d32),0.25,0.93,-0.04)); // libro
-  // cuello + cabeza
-  g.add(cyl(0.05,0.08,skin,0,1.37,0,10));
-  g.add(sph(0.13,skin,0,1.5,0));
-  // cabello (melena corta)
-  g.add(sph(0.145,hair,0,1.54,0.03,1,1.02,1.12));
-  g.add(sph(0.08,hair,-0.1,1.43,0.04)); g.add(sph(0.08,hair,0.1,1.43,0.04));
-  // cara (frente -Z): lentes, ojos, nariz, boca
-  g.add(box(0.075,0.055,0.012,frame,-0.05,1.52,-0.125)); g.add(box(0.075,0.055,0.012,frame,0.05,1.52,-0.125));
-  g.add(box(0.04,0.012,0.012,frame,0,1.52,-0.125));
-  g.add(sph(0.02,frame,-0.05,1.52,-0.12)); g.add(sph(0.02,frame,0.05,1.52,-0.12));
-  g.add(box(0.03,0.045,0.03,skin,0,1.47,-0.13));
-  g.add(box(0.05,0.013,0.01,mat(0x9c3a4a),0,1.44,-0.125));
-  g.userData.eye=1.5;
-  return g;
-}
-function spawnAvatar(){ if(avatar) return;
-  avatar=makeAvatar();
-  let sp=null;
-  if(project.spaces.length){
-    sp=(selId && project.spaces.find(s=>s.id===selId))||null;
-    if(!sp){ const t=controls.target; let bd=Infinity; for(const s of project.spaces){ const dd=Math.hypot(s.x-t.x,s.z-t.z); if(dd<bd){bd=dd; sp=s;} } }
-  }
-  if(sp){ const g=obj3d.get(sp.id); g.updateWorldMatrix(true,false);
-    const wp=g.localToWorld(new THREE.Vector3(0,0,-sp.d/2+1.4)); // frente del cuarto (ante el pizarrón)
-    avatar.position.set(wp.x,0,wp.z); avatar.rotation.y=(sp.rot||0)*DEG+Math.PI; } // de espaldas al pizarrón, mirando a los alumnos
-  else { avatar.position.set(controls.target.x,0,controls.target.z); avatar.rotation.y=Math.PI; }
-  scene.add(avatar);
-  document.getElementById('avatarPad').style.display='flex'; document.getElementById('btnAvatar').classList.add('on');
-  toast('Docente al frente, mirando a los alumnos · muévela con ← ↑ ↓ →'); }
-function removeAvatar(){ if(!avatar) return; if(fpMode) exitFP(); scene.remove(avatar); disposeTree(avatar); avatar=null;
-  document.getElementById('avatarPad').style.display='none'; document.getElementById('btnAvatar').classList.remove('on'); }
-function toggleAvatar(){ avatar? removeAvatar(): spawnAvatar(); }
-function enterFP(){ if(!avatar) spawnAvatar(); fpMode=true; controls.enabled=false; avatar.visible=false; document.getElementById('btnFP').classList.add('on'); toast('Primera persona · flechas para caminar · “3D” para salir'); }
-function exitFP(){ if(!fpMode) return; fpMode=false; controls.enabled=true; if(avatar) avatar.visible=true; document.getElementById('btnFP').classList.remove('on'); }
+let fpMode=false; const FP_EYE=1.5; const fpPos=new THREE.Vector3(); let fpYaw=0;
+function enterFP(){ fpMode=true; controls.enabled=false;
+  fpPos.set(controls.target.x, FP_EYE, controls.target.z+3); fpYaw=0;
+  document.getElementById('walkPad').style.display='flex'; document.getElementById('btnFP').classList.add('on');
+  toast('Primera persona · flechas ← ↑ ↓ → para caminar · “3D” o Esc para salir'); }
+function exitFP(){ if(!fpMode) return; fpMode=false; controls.enabled=true; keys.clear();
+  document.getElementById('walkPad').style.display='none'; document.getElementById('btnFP').classList.remove('on'); }
 function toggleFP(){ fpMode? exitFP(): enterFP(); }
-function avatarFwd(){ const h=avatar.rotation.y; return new THREE.Vector3(-Math.sin(h),0,-Math.cos(h)); }
-function updateAvatar(dt){
-  const tr=2.2*dt, sp=2.8*dt; let h=avatar.rotation.y;
-  if(keys.has('ArrowLeft')) h+=tr; if(keys.has('ArrowRight')) h-=tr; avatar.rotation.y=h;
-  const f=avatarFwd(); let moving=false;
-  if(keys.has('ArrowUp')){ avatar.position.addScaledVector(f,sp); moving=true; }
-  if(keys.has('ArrowDown')){ avatar.position.addScaledVector(f,-sp); moving=true; }
-  avatar.userData.t=(avatar.userData.t||0)+(moving?dt*9:0);
-  avatar.position.y=Math.abs(Math.sin(avatar.userData.t))*0.02;
+function updateFP(dt){
+  const tr=2.0*dt, sp=3.0*dt;
+  if(keys.has('ArrowLeft')) fpYaw+=tr; if(keys.has('ArrowRight')) fpYaw-=tr;
+  const f=new THREE.Vector3(-Math.sin(fpYaw),0,-Math.cos(fpYaw));
+  if(keys.has('ArrowUp')) fpPos.addScaledVector(f,sp);
+  if(keys.has('ArrowDown')) fpPos.addScaledVector(f,-sp);
+  fpPos.y=FP_EYE; camera.position.copy(fpPos);
+  camera.lookAt(fpPos.x+f.x*3, FP_EYE-0.15, fpPos.z+f.z*3);
 }
-function updateFPCamera(){ const f=avatarFwd(); const eye=avatar.position.clone(); eye.y+=avatar.userData.eye; eye.addScaledVector(f,0.1); camera.position.copy(eye); const look=eye.clone().addScaledVector(f,3); look.y=eye.y-0.2; camera.lookAt(look); }
-document.getElementById('btnAvatar').onclick=toggleAvatar;
 document.getElementById('btnFP').onclick=toggleFP;
-document.querySelectorAll('#avatarPad [data-mv]').forEach(b=>{ const k=b.dataset.mv;
-  const dn=e=>{e.preventDefault(); if(!avatar) spawnAvatar(); keys.add(k);}; const up=()=>keys.delete(k);
+document.querySelectorAll('#walkPad [data-mv]').forEach(b=>{ const k=b.dataset.mv;
+  const dn=e=>{e.preventDefault(); keys.add(k);}; const up=()=>keys.delete(k);
   b.addEventListener('pointerdown',dn); b.addEventListener('pointerup',up); b.addEventListener('pointerleave',up); b.addEventListener('pointercancel',up); });
 window.addEventListener('keyup',e=>keys.delete(e.key));
 window.addEventListener('blur',()=>keys.clear());
@@ -1023,7 +974,7 @@ window.addEventListener('blur',()=>keys.clear());
 /* ============================ Loop / resize =========================== */
 function resize(){ const r=canvas.parentElement.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/r.height; camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(canvas.parentElement); resize();
-(function loop(){ requestAnimationFrame(loop); const dt=Math.min(0.05,clock.getDelta()); if(avatar) updateAvatar(dt); if(fpMode) updateFPCamera(); else controls.update(); sun.target.position.copy(controls.target); renderer.render(scene,camera); })();
+(function loop(){ requestAnimationFrame(loop); const dt=Math.min(0.05,clock.getDelta()); if(fpMode) updateFP(dt); else controls.update(); sun.target.position.copy(controls.target); renderer.render(scene,camera); })();
 
 /* ============================ Toast =========================== */
 let toastT; const toastEl=document.getElementById('toast');
