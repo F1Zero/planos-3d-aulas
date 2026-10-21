@@ -117,9 +117,16 @@
 
   <div class="toolbar">
     <div class="group">
-      <label>Agregar espacio</label>
+      <label>Aula por nivel</label>
+      <input id="students" type="number" min="1" max="80" value="30" title="N° de alumnos (mesas = sillas)" style="width:52px">
+      <span style="font-size:11px;color:var(--muted)">alumnos</span>
+      <button id="lvlPre" class="primary" title="Aula de preescolar: mesa trapezoidal + silla chica (guinda)">Preescolar</button>
+      <button id="lvlPri" class="primary" title="Aula de primaria: mesa trapezoidal + silla (vino)">Primaria</button>
+      <button id="lvlSec" class="primary" title="Aula de secundaria: pupitre con paleta (vino)">Secundaria</button>
+    </div>
+    <div class="group">
+      <label>Otro espacio</label>
       <select id="spaceType">
-        <option value="aula">Aula (30 lugares)</option>
         <option value="biblioteca">Biblioteca</option>
         <option value="computo">Aula de cómputo</option>
         <option value="laboratorio">Laboratorio</option>
@@ -233,7 +240,8 @@ const C = {
   wood:0xb98a52, woodDark:0x7a5a33, metal:0xb9c0c7, metalDark:0x7d858d,
   seat:0x355c7d, board:0x2f5d3a, boardFrame:0xdddddd, screen:0x222a35,
   white:0xf2f4f6, dark:0x3a3f47, brand:0x7D1C4B, gold:0xBFA262, plant:0x3c8a4a,
-  ceramic:0xeaf0f3
+  ceramic:0xeaf0f3,
+  guinda:0x7D1C4B, vino:0x6f1f2e, capuchino:0xc7b299, aluminio:0xd7dbe0, boardWhite:0xf7f9fb
 };
 
 /* ============================ Three base =========================== */
@@ -283,9 +291,14 @@ function cyl(r,h,material,x=0,y=0,z=0,seg=20){ const m=new THREE.Mesh(new THREE.
 const FURN = {
   silla:       {label:'Silla', foot:[0.46,0.5], make:makeChair},
   mesa:        {label:'Mesa alumno', foot:[0.6,0.5], make:makeDesk},
-  escritorio:  {label:'Escritorio maestro', foot:[1.2,0.6], make:()=>makeDesk(1.2,0.6,true)},
-  sillaMaestro:{label:'Silla maestro', foot:[0.5,0.5], make:()=>makeChair(true)},
-  pizarron:    {label:'Pizarrón', foot:[2.4,0.08], make:makeBoard},
+  escritorio:  {label:'Mesa de maestro', foot:[1.2,0.5], make:()=>makeDesk(1.2,0.5,true)},
+  sillaMaestro:{label:'Silla de maestro', foot:[0.5,0.44], make:makeTeacherChair},
+  mesaPre:     {label:'Mesa trapezoidal preescolar', foot:[1.2,0.5], make:makePreTable},
+  sillaPre:    {label:'Silla preescolar', foot:[0.33,0.32], make:makePreChair},
+  mesaPri:     {label:'Mesa trapezoidal primaria', foot:[0.82,0.5], make:makePriTable},
+  sillaPri:    {label:'Silla primaria', foot:[0.35,0.38], make:makePriChair},
+  pupitreSec:  {label:'Pupitre con paleta (secundaria)', foot:[0.9,0.5], make:makeSecPupitre},
+  pizarron:    {label:'Pizarrón blanco', foot:[2.4,0.08], make:makeBoard},
   librero:     {label:'Librero', foot:[0.9,0.32], make:makeShelf},
   estante:     {label:'Estante bodega', foot:[1.0,0.45], make:()=>makeShelf(1.0,0.45,2.0,0x9aa0a6)},
   compu:       {label:'Mesa de cómputo', foot:[1.2,0.6], make:makeComputer},
@@ -301,7 +314,7 @@ const FURN = {
   planta:      {label:'Planta', foot:[0.5,0.5], make:makePlant},
   puerta:      {label:'Puerta', foot:[0.9,0.1], make:makeDoor},
 };
-const CATALOG_ORDER = ['mesa','silla','escritorio','sillaMaestro','pizarron','compu','mesaLab','taburete','librero','estante','escOficina','sillaOfi','archivero','mesaRedonda','mueble','inodoro','lavabo','planta','puerta'];
+const CATALOG_ORDER = ['mesaPre','sillaPre','mesaPri','sillaPri','pupitreSec','escritorio','sillaMaestro','pizarron','mesa','silla','compu','mesaLab','taburete','librero','estante','escOficina','sillaOfi','archivero','mesaRedonda','mueble','inodoro','lavabo','planta','puerta'];
 
 function makeChair(office=false){
   const g=new THREE.Group(); g.userData.kind=office?'sillaOfi':'silla';
@@ -321,10 +334,11 @@ function makeDesk(w=0.6,d=0.5,big=false){
   else for(const sx of [-w/2+0.05,w/2-0.05]) for(const sz of [-d/2+0.05,d/2-0.05]) g.add(cyl(0.02,0.72,legM,sx,0.36,sz,8));
   return g;
 }
-function makeBoard(){
+function makeBoard(){ // pizarrón metálico BLANCO 240 x 120 cm (Anexo)
   const g=new THREE.Group(); g.userData.kind='pizarron';
-  g.add(box(2.5,1.25,0.06,mat(C.boardFrame),0,1.5,0));
-  g.add(box(2.36,1.12,0.02,mat(C.board),0,1.5,0.035));
+  g.add(box(2.46,1.26,0.04,mat(C.aluminio,{m:.5,r:.4}),0,1.45,0));   // marco aluminio
+  g.add(box(2.4,1.2,0.02,mat(C.boardWhite,{r:.25}),0,1.45,0.03));    // superficie blanca
+  g.add(box(2.46,0.035,0.06,mat(C.aluminio,{m:.5}),0,0.83,0.03));    // porta-plumón inferior
   return g;
 }
 function makeShelf(w=0.9,d=0.32,h=1.8,col){
@@ -408,6 +422,43 @@ function makeDoor(){
   return g;
 }
 
+/* --- Mobiliario escolar por nivel (Anexo SEGEY 2026) --- */
+function trapTop(frontW,backW,depth,th,hex,y){ // cubierta trapezoidal (base mayor al frente/+Z)
+  const h1=frontW/2,h2=backW/2,hd=depth/2;
+  const s=new THREE.Shape(); s.moveTo(-h1,hd); s.lineTo(h1,hd); s.lineTo(h2,-hd); s.lineTo(-h2,-hd); s.closePath();
+  const geo=new THREE.ExtrudeGeometry(s,{depth:th,bevelEnabled:false}); geo.rotateX(-Math.PI/2); geo.translate(0,y,0);
+  const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:hex,roughness:.8,side:THREE.DoubleSide})); m.castShadow=true; m.receiveShadow=true; return m;
+}
+function shellChair(o){ // concha anatómica asiento+respaldo en una pieza
+  const g=new THREE.Group(); const sh=mat(o.shell,{r:.6}), lg=mat(o.legs,{m:.5,r:.5});
+  const w=o.seatW, dp=o.seatD, sH=o.seatH, backH=o.totalH-sH;
+  g.add(box(w,0.04,dp,sh,0,sH,0));
+  const bk=box(w,backH,0.05,sh,0,sH+backH/2,-dp/2+0.03); bk.rotation.x=-0.07; g.add(bk);
+  for(const sx of [-w/2+0.04,w/2-0.04]) for(const sz of [-dp/2+0.04,dp/2-0.04]) g.add(cyl(0.015,sH,lg,sx,sH/2,sz,8));
+  g.add(box(w-0.06,0.02,0.03,lg,0,sH*0.5,dp/2-0.05));
+  return g;
+}
+function makeTeacherChair(){ const g=shellChair({shell:C.guinda,legs:C.metalDark,seatH:0.42,seatW:0.45,seatD:0.44,totalH:0.82}); g.userData.kind='sillaMaestro'; return g; }
+function makePreChair(){ const g=shellChair({shell:C.guinda,legs:C.metalDark,seatH:0.34,seatW:0.31,seatD:0.30,totalH:0.61}); g.userData.kind='sillaPre'; return g; }
+function makePriChair(){ const g=shellChair({shell:C.vino,legs:C.dark,seatH:0.385,seatW:0.33,seatD:0.365,totalH:0.65}); g.userData.kind='sillaPri'; return g; }
+function makePreTable(){ const g=new THREE.Group(); g.userData.kind='mesaPre'; // trapezoidal 120x50, h57, capuchino + patas guinda
+  g.add(trapTop(1.2,0.95,0.5,0.028,C.capuchino,0.555));
+  const lg=mat(C.guinda,{m:.3}); for(const[x,z] of [[-0.5,0.2],[0.5,0.2],[-0.38,-0.2],[0.38,-0.2]]) g.add(cyl(0.02,0.555,lg,x,0.2775,z,10)); return g; }
+function makePriTable(){ const g=new THREE.Group(); g.userData.kind='mesaPri'; // trapezoidal 82x50, h57
+  g.add(trapTop(0.82,0.62,0.5,0.028,C.wood,0.555));
+  const lg=mat(C.guinda,{m:.3}); for(const[x,z] of [[-0.34,0.2],[0.34,0.2],[-0.24,-0.2],[0.24,-0.2]]) g.add(cyl(0.016,0.555,lg,x,0.2775,z,10)); return g; }
+function makeSecPupitre(){ // silla con paleta (pupitre) secundaria: concha vino + estructura negra + paleta a la derecha
+  const g=new THREE.Group(); g.userData.kind='pupitreSec';
+  const sh=mat(C.vino,{r:.6}), lg=mat(C.dark,{m:.5,r:.5});
+  g.add(box(0.44,0.04,0.46,sh,0,0.44,0));
+  const bk=box(0.42,0.34,0.05,sh,0,0.63,-0.21); bk.rotation.x=-0.07; g.add(bk);
+  for(const sx of [-0.19,0.19]) for(const sz of [-0.2,0.2]) g.add(cyl(0.018,0.44,lg,sx,0.22,sz,8));
+  g.add(box(0.46,0.02,0.05,lg,0,0.18,0));                         // parrilla/papelera
+  g.add(box(0.48,0.03,0.34,mat(C.vino,{r:.6}),0.42,0.76,-0.02));  // paleta
+  const arm=cyl(0.014,0.4,lg,0.3,0.58,0.12,8); g.add(arm);        // brazo soporte paleta
+  return g;
+}
+
 /* ============================ Construcción de espacios =========================== */
 function buildRoomMesh(sp){
   const g=new THREE.Group();
@@ -445,22 +496,29 @@ function makeLabel(text,w){
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 const SPACE_LABELS={aula:'Aula',biblioteca:'Biblioteca',computo:'Cómputo',laboratorio:'Laboratorio',administrativa:'Dirección',docente:'Sala docente',banos:'Baños',cocina:'Cocina',bodega:'Bodega',generico:'Espacio'};
 function FURN_SPACE_LABEL(t){return SPACE_LABELS[t]||'Espacio';}
+const NIVEL_LABEL={preescolar:'Preescolar',primaria:'Primaria',secundaria:'Secundaria'};
 
 /* --- generador de mobiliario por defecto --- */
-function defaultObjects(type,w,d){
+function defaultObjects(sp){
+  const {type,w,d}=sp; const nivel=sp.nivel||'primaria'; const students=sp.students||30;
   const o=[]; const add=(kind,x,z,rot=0)=>o.push({kind,x,z,rot});
   const front=-d/2, back=d/2;
   if(type==='aula'){
     add('pizarron',0,front+0.1,0);
-    add('escritorio',-(w/2)+1.0, front+0.9, 0);
-    add('sillaMaestro',-(w/2)+1.0, front+1.55, 180);
+    add('escritorio',-(w/2)+1.0, front+0.95, 0);
+    add('sillaMaestro',-(w/2)+1.0, front+1.65, 180);
     add('puerta', w/2-0.6, back-0.06, 0);
-    const cols=5, rows=6;
-    const x0=-w/2+1.1, x1=w/2-1.1, z0=front+2.2, z1=back-1.0;
-    for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
-      const x=x0+(x1-x0)*(cols===1?0.5:c/(cols-1));
-      const z=z0+(z1-z0)*(rows===1?0.5:r/(rows-1));
-      add('mesa',x,z,0); add('silla',x,z+0.45,180);
+    const L={preescolar:{sx:1.5,sz:1.4,table:'mesaPre',chair:'sillaPre',coff:0.5},
+             primaria:{sx:1.05,sz:1.2,table:'mesaPri',chair:'sillaPri',coff:0.45},
+             secundaria:{sx:0.95,sz:1.05,table:null,chair:'pupitreSec',coff:0}}[nivel]
+            ||{sx:1.05,sz:1.2,table:'mesaPri',chair:'sillaPri',coff:0.45};
+    const x0=-w/2+0.9, x1=w/2-0.9, z0=front+2.3;
+    const cols=Math.max(1, Math.floor((x1-x0)/L.sx)+1);
+    for(let i=0;i<students;i++){
+      const r=Math.floor(i/cols), c=i%cols;
+      const x=cols===1? (x0+x1)/2 : x0+(x1-x0)*(c/(cols-1));
+      const z=z0 + r*L.sz;
+      if(L.table){ add(L.table,x,z,0); add(L.chair,x,z+L.coff,180); } else add(L.chair,x,z,0);
     }
   } else if(type==='computo'){
     add('pizarron',0,front+0.1,0); add('escritorio',w/2-1.0,front+0.9,0); add('sillaMaestro',w/2-1.0,front+1.5,180);
@@ -539,18 +597,19 @@ function rebuildAll(){
 function disposeTree(g){ g.traverse(m=>{ if(m.isMesh){ m.geometry.dispose?.(); } if(m.material?.map) m.material.map.dispose?.(); }); }
 
 /* ============================ API de edición =========================== */
-function addSpace(type,w,d){
+function addSpace(type,w,d,opts={}){
   let x=0,z=0;
   if(project.spaces.length){ const last=project.spaces[project.spaces.length-1]; x=last.x+last.w/2+w/2+1.5; z=last.z;
     if(x>26){ x=0; z=last.z+ Math.max(...project.spaces.map(s=>s.d))/2 + d/2 + 1.5; } }
   const sp={id:uid('sp'),type,name:FURN_SPACE_LABEL(type),w:+w,d:+d,x,z,rot:0,objects:[]};
-  sp.objects=defaultObjects(type,+w,+d);
+  if(type==='aula'){ sp.nivel=opts.nivel||'primaria'; sp.students=Math.max(1,Math.min(80,+opts.students||30)); sp.name='Aula '+NIVEL_LABEL[sp.nivel]; }
+  sp.objects=defaultObjects(sp);
   project.spaces.push(sp); addSpaceMesh(sp); renderTree(); select(sp.id); frameAll();
-  toast(`${sp.name} agregada (${w}×${d} m)`);
+  toast(type==='aula'? `${sp.name} · ${sp.students} alumnos` : `${sp.name} agregada (${w}×${d} m)`);
 }
 function regenerateFurniture(sp){
   for(const o of sp.objects){ const g=obj3d.get(o.id); g&&g.parent&&g.parent.remove(g); g&&disposeTree(g); obj3d.delete(o.id); parentSpace.delete(o.id); }
-  sp.objects=defaultObjects(sp.type,sp.w,sp.d);
+  sp.objects=defaultObjects(sp);
   for(const o of sp.objects) addObjectMesh(sp,o);
   renderTree(); select(sp.id); toast('Mobiliario regenerado por plantilla');
 }
@@ -704,6 +763,9 @@ function renderProps(){
       <div class="r"><label>Medidas (m)</label><div class="grid3"><input id="pW" type="number" step="0.5" min="2" value="${sp.w}"><input id="pD" type="number" step="0.5" min="2" value="${sp.d}"></div></div>
       <div class="r"><label>Posición</label><div class="grid3"><input id="pX" type="number" step="0.25" value="${sp.x}"><input id="pZ" type="number" step="0.25" value="${sp.z}"></div></div>
       <div class="r"><label>Giro</label><input id="pRot" type="number" step="15" value="${sp.rot||0}"><span class="muted">°</span></div>
+      ${sp.type==='aula'?`<h4>Aula (nivel y alumnos)</h4>
+      <div class="r"><label>Nivel</label><select id="pNivel">${Object.entries(NIVEL_LABEL).map(([k,v])=>`<option value="${k}" ${k===(sp.nivel||'primaria')?'selected':''}>${v}</option>`).join('')}</select></div>
+      <div class="r"><label>Alumnos</label><input id="pStu" type="number" min="1" max="80" value="${sp.students||30}"></div>`:''}
       <h4>Mobiliario</h4>
       <div class="r"><button id="pRegen" class="gold" style="flex:1">↻ Regenerar por plantilla</button></div>
       <div class="r"><button id="pDel" style="flex:1;color:var(--err)">🗑 Eliminar espacio</button></div>
@@ -717,6 +779,10 @@ function renderProps(){
     props.querySelector('#pRot').onchange=e=>{sp.rot=+e.target.value||0; obj3d.get(sp.id).rotation.y=sp.rot*DEG; updateSelBox();};
     props.querySelector('#pRegen').onclick=()=>regenerateFurniture(sp);
     props.querySelector('#pDel').onclick=()=>deleteSel();
+    if(sp.type==='aula'){
+      props.querySelector('#pNivel').onchange=e=>{sp.nivel=e.target.value; sp.name='Aula '+NIVEL_LABEL[sp.nivel]; regenerateFurniture(sp);};
+      props.querySelector('#pStu').onchange=e=>{sp.students=Math.max(1,Math.min(80,+e.target.value||30)); regenerateFurniture(sp);};
+    }
   } else {
     const sp=project.spaces.find(s=>s.id===spId); const o=sp.objects.find(o=>o.id===selId);
     rightTitle.textContent='Mueble';
@@ -748,6 +814,10 @@ for(const k of CATALOG_ORDER){ const b=document.createElement('button');
 /* ============================ Barra superior =========================== */
 let snap=true;
 document.getElementById('btnAddSpace').onclick=()=>addSpace(document.getElementById('spaceType').value, +document.getElementById('spaceW').value, +document.getElementById('spaceD').value);
+const addAula=(nivel)=>{ const n=+document.getElementById('students').value||30; addSpace('aula',+document.getElementById('spaceW').value,+document.getElementById('spaceD').value,{nivel,students:n}); };
+document.getElementById('lvlPre').onclick=()=>addAula('preescolar');
+document.getElementById('lvlPri').onclick=()=>addAula('primaria');
+document.getElementById('lvlSec').onclick=()=>addAula('secundaria');
 document.getElementById('btnGrid').onclick=()=>{grid.visible=!grid.visible;};
 document.getElementById('btnSnap').onclick=e=>{snap=!snap; e.target.textContent='Snap: '+(snap?'on':'off');};
 document.getElementById('btnTop').onclick=()=>{ const t=controls.target; camera.position.set(t.x,38,t.z+0.01); controls.update(); };
@@ -839,9 +909,10 @@ function toast(m){ toastEl.textContent=m; toastEl.classList.add('show'); clearTi
 
 /* ============================ Init =========================== */
 renderTree(); renderProps();
-const _demo=new URLSearchParams(location.search).get('demo');
-if(_demo && SPACE_LABELS[_demo]){ const d=DEF_SIZE[_demo]||[8,8]; document.getElementById('spaceType').value=_demo; addSpace(_demo,d[0],d[1]); }
-else addSpace('aula',8,8);
+const _p=new URLSearchParams(location.search); const _demo=_p.get('demo');
+if(_demo==='aula'){ const nivel=_p.get('nivel')||'primaria'; const n=Math.max(1,Math.min(80,+_p.get('n')||30)); document.getElementById('students').value=n; addSpace('aula',8,8,{nivel,students:n}); }
+else if(_demo && SPACE_LABELS[_demo]){ const d=DEF_SIZE[_demo]||[8,8]; const el=document.getElementById('spaceType'); if(el.querySelector(`option[value="${_demo}"]`)) el.value=_demo; addSpace(_demo,d[0],d[1]); }
+else addSpace('aula',8,8,{nivel:'primaria',students:30});
 select(null); frameAll();
 window.__p3d={project};
 </script>
