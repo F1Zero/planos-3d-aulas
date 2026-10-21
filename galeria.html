@@ -69,15 +69,18 @@ const CARDS=[
   {t:'generico',   i:'▦',    n:'Espacio vacío',      sz:'6×5 m', d:'Cuarto con muros y puerta para diseñar desde cero.'},
 ];
 const g=document.getElementById('grid');
+const CNT={computo:{l:'N° de alumnos',d:24},laboratorio:{l:'N° de alumnos',d:24},biblioteca:{l:'N° de lugares',d:16},administrativa:{l:'N° de escritorios',d:4},docente:{l:'N° de docentes',d:8},banos:{l:'N° de WC',d:4},cocina:{l:'N° de lugares',d:6}};
 for(const c of CARDS){
-  const el=document.createElement('div'); el.className='card';
-  const act = c.nivel
-    ? `<div class="num"><label>N° de alumnos</label><input type="number" min="1" max="80" value="${c.num||30}"></div><button class="open">Abrir ejemplo 3D</button>`
-    : `<a href="index.html?demo=${c.t}"><button>Abrir ejemplo 3D</button></a>`;
+  const el=document.createElement('div'); el.className='card'; const cc=CNT[c.t];
+  let act;
+  if(c.nivel) act=`<div class="num"><label>N° de alumnos</label><input type="number" min="1" max="80" value="${c.num||30}"></div><button class="open">Abrir ejemplo 3D</button>`;
+  else if(cc) act=`<div class="num"><label>${cc.l}</label><input type="number" min="1" max="200" value="${cc.d}"></div><button class="open">Abrir ejemplo 3D</button>`;
+  else act=`<a href="index.html?demo=${c.t}"><button>Abrir ejemplo 3D</button></a>`;
   el.innerHTML=`<div class="top">${c.i}</div>
     <div class="body"><h3>${c.n}</h3><span class="size">${c.sz}</span><p>${c.d}</p></div>
     <div class="act">${act}</div>`;
   if(c.nivel){ const inp=el.querySelector('input'); el.querySelector('.open').onclick=()=>{ const n=Math.max(1,Math.min(80,parseInt(inp.value,10)||30)); location.href=`index.html?demo=aula&nivel=${c.nivel}&n=${n}`; }; }
+  else if(cc){ const inp=el.querySelector('input'); el.querySelector('.open').onclick=()=>{ const n=Math.max(1,Math.min(200,parseInt(inp.value,10)||cc.d)); location.href=`index.html?demo=${c.t}&n=${n}`; }; }
   g.appendChild(el);
 }
 </script>

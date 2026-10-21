@@ -137,6 +137,7 @@
         <option value="bodega">Bodega</option>
         <option value="generico">Espacio vacío</option>
       </select>
+      <input id="otherCount" type="number" min="1" max="200" value="16" title="Cantidad (alumnos / lugares / escritorios / docentes / WC)" style="width:56px">
       <input id="spaceW" type="number" min="2" max="40" step="0.5" value="8" title="Ancho (m)" style="width:58px">
       <span style="color:var(--muted)">×</span>
       <input id="spaceD" type="number" min="2" max="40" step="0.5" value="8" title="Largo (m)" style="width:58px">
@@ -498,6 +499,8 @@ function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+
 const SPACE_LABELS={aula:'Aula',biblioteca:'Biblioteca',computo:'Cómputo',laboratorio:'Laboratorio',administrativa:'Dirección',docente:'Sala docente',banos:'Baños',cocina:'Cocina',bodega:'Bodega',generico:'Espacio'};
 function FURN_SPACE_LABEL(t){return SPACE_LABELS[t]||'Espacio';}
 const NIVEL_LABEL={preescolar:'Preescolar',primaria:'Primaria',secundaria:'Secundaria'};
+const COUNTABLE={computo:{label:'N° de alumnos',def:24},laboratorio:{label:'N° de alumnos',def:24},biblioteca:{label:'N° de lugares',def:16},administrativa:{label:'N° de escritorios',def:4},docente:{label:'N° de docentes',def:8},banos:{label:'N° de WC',def:4},cocina:{label:'N° de lugares',def:6}};
+function gridFit(n,x0,x1,z0,z1,px,pz){ const UW=Math.max(0.1,x1-x0),UD=Math.max(0.1,z1-z0); const cols=Math.max(1,Math.min(n,Math.floor(UW/px)+1)),rows=Math.ceil(n/cols); const sX=cols>1?Math.min(px,UW/(cols-1)):0,sZ=rows>1?Math.min(pz,UD/(rows-1)):0; const startX=(x0+x1)/2-((cols-1)*sX)/2,out=[]; for(let i=0;i<n;i++){const c=i%cols,r=Math.floor(i/cols); out.push({x:+(startX+c*sX).toFixed(2),z:+(z0+r*sZ).toFixed(2)});} return out; }
 
 /* --- generador de mobiliario por defecto --- */
 function defaultObjects(sp){
@@ -527,48 +530,48 @@ function defaultObjects(sp){
       if(L.table){ add(L.table,x,z,0); add(L.chair,x,z+L.coff,180); } else add(L.chair,x,z,0);
     }
   } else if(type==='computo'){
-    add('pizarron',0,front+0.1,0); add('escritorio',w/2-1.0,front+0.9,0); add('sillaMaestro',w/2-1.0,front+1.5,180);
-    add('puerta',-(w/2)+0.6,back-0.06,0);
-    let n=0; const place=(x,z,rot)=>{add('compu',x,z,rot);add('sillaOfi',x,z+0.6*Math.cos(rot*DEG),rot+180);n++;};
-    for(let z=front+1.6; z<=back-1.0 && n<10; z+=1.3) place(-(w/2)+0.9,z,90);
-    for(let z=front+1.6; z<=back-1.0 && n<20; z+=1.3) place(w/2-0.9,z,-90);
-    for(let x=-w/2+2.0; x<=w/2-2.0 && n<30; x+=1.4) place(x,back-0.9,0);
+    const n=sp.count||COUNTABLE.computo.def;
+    add('pizarron',0,front+0.1,0); add('escritorio',w/2-1.0,front+0.95,0); add('sillaMaestro',w/2-1.0,front+1.65,180); add('puerta',-(w/2)+0.6,back-0.06,0);
+    gridFit(n,-w/2+0.8,w/2-0.8,front+2.3,back-1.0,1.3,1.4).forEach(p=>{ add('compu',p.x,p.z,0); add('sillaOfi',p.x,p.z+0.62,180); });
   } else if(type==='laboratorio'){
-    add('pizarron',0,front+0.1,0); add('escritorio',-(w/2)+1.0,front+0.9,0);
-    add('puerta',w/2-0.6,back-0.06,0);
-    for(let r=0;r<3;r++) for(let c=0;c<2;c++){
-      const x=(c? w/4 : -w/4), z=front+2.2+r*1.6;
-      add('mesaLab',x,z,0);
-      add('taburete',x-0.5,z+0.6,0);add('taburete',x+0.5,z+0.6,0);
-      add('taburete',x-0.5,z-0.6,0);add('taburete',x+0.5,z-0.6,0);
-    }
-    add('librero',w/2-0.3,front+0.6,90); add('lavabo',w/2-0.3,back-0.6,90);
+    const n=sp.count||COUNTABLE.laboratorio.def, tables=Math.max(1,Math.ceil(n/4));
+    add('pizarron',0,front+0.1,0); add('escritorio',-(w/2)+1.0,front+0.95,0); add('puerta',w/2-0.6,back-0.06,0);
+    let placed=0;
+    gridFit(tables,-w/2+1.1,w/2-1.1,front+2.5,back-1.2,1.9,1.9).forEach(p=>{ add('mesaLab',p.x,p.z,0);
+      for(const s of [[-0.55,0.62],[0.55,0.62],[-0.55,-0.62],[0.55,-0.62]]){ if(placed<n){ add('taburete',p.x+s[0],p.z+s[1],0); placed++; } } });
+    add('lavabo',w/2-0.3,front+0.8,90); add('librero',-(w/2)+0.3,back-0.6,-90);
   } else if(type==='biblioteca'){
+    const n=sp.count||COUNTABLE.biblioteca.def, tables=Math.max(1,Math.ceil(n/4));
     add('puerta',-(w/2)+0.6,back-0.06,0);
     for(let x=-w/2+0.7;x<=w/2-0.7;x+=1.0){ add('librero',x,front+0.25,0); }
     add('librero',w/2-0.2,0,90); add('librero',-(w/2)+0.2,0,-90);
-    const cx=[-w/4,w/4], cz=[0,d/4];
-    for(const x of cx) for(const z of cz){ add('mesaRedonda',x,z,0);
-      for(let a=0;a<4;a++){const ang=a*90*DEG; add('silla',x+Math.sin(ang)*0.9,z+Math.cos(ang)*0.9, a*90+180);} }
+    let placed=0;
+    gridFit(tables,-w/2+1.3,w/2-1.3,front+1.7,back-1.2,2.1,2.1).forEach(p=>{ add('mesaRedonda',p.x,p.z,0);
+      for(let a=0;a<4;a++){ if(placed<n){ const ang=a*90*DEG; add('silla',p.x+Math.sin(ang)*0.85,p.z+Math.cos(ang)*0.85,a*90+180); placed++; } } });
   } else if(type==='administrativa'){
+    const n=sp.count||COUNTABLE.administrativa.def;
     add('puerta',-(w/2)+0.6,back-0.06,0);
-    const spots=[[-w/4,front+1.0,0],[w/4,front+1.0,0],[-w/4,0,0],[w/4,0,0]];
-    for(const[x,z,rot] of spots){ add('escOficina',x,z,rot); add('sillaOfi',x,z+0.7,180); add('sillaOfi',x,z-0.8,0); }
-    add('archivero',w/2-0.35,back-0.5,90); add('archivero',w/2-0.35,back-1.1,90); add('planta',-(w/2)+0.5,back-0.6,0);
+    gridFit(n,-w/2+1.0,w/2-1.0,front+1.3,back-1.3,2.0,2.0).forEach(p=>{ add('escOficina',p.x,p.z,0); add('sillaOfi',p.x,p.z-0.7,0); add('sillaOfi',p.x,p.z+0.8,180); });
+    add('archivero',w/2-0.35,back-0.5,90); add('planta',-(w/2)+0.5,back-0.6,0);
   } else if(type==='docente'){
+    const n=sp.count||COUNTABLE.docente.def, tables=Math.max(1,Math.ceil(n/8));
     add('puerta',-(w/2)+0.6,back-0.06,0);
-    add('mesaRedonda',0,0,0); add('mesaRedonda',0,0,0);
-    for(let a=0;a<8;a++){const ang=a*45*DEG; add('sillaOfi',Math.sin(ang)*1.3,Math.cos(ang)*1.3,a*45+180);}
-    add('librero',-(w/2)+0.2,front+1,-90); add('mueble',w/2-0.5,front+0.8,90); add('planta',w/2-0.5,back-0.6,0);
+    let placed=0; const per=Math.ceil(n/tables);
+    gridFit(tables,-w/2+1.5,w/2-1.5,tables>1?front+2.0:0,tables>1?back-1.6:0,2.8,2.8).forEach(p=>{ add('mesaRedonda',p.x,p.z,0);
+      const k=Math.min(per,n-placed); for(let a=0;a<k;a++){ const ang=a/k*2*Math.PI; add('sillaOfi',p.x+Math.sin(ang)*1.15,p.z+Math.cos(ang)*1.15,(ang/DEG)+180); placed++; } });
+    add('librero',-(w/2)+0.2,front+1,-90); add('mueble',w/2-0.5,front+0.8,90);
   } else if(type==='banos'){
-    const n=Math.max(2,Math.floor(w/1.0));
-    for(let i=0;i<n;i++){ const x=-w/2+0.6+i*((w-1.2)/(n-1||1)); add('inodoro',x,front+0.5,0); }
-    for(let i=0;i<Math.max(2,n-1);i++){ const x=-w/2+0.7+i*((w-1.4)/(Math.max(1,n-2)||1)); add('lavabo',x,back-0.45,180); }
+    const n=sp.count||COUNTABLE.banos.def, lav=Math.max(1,Math.ceil(n/2));
+    gridFit(n,-w/2+0.6,w/2-0.6,front+0.5,front+1.5,0.95,0.95).forEach(p=>add('inodoro',p.x,p.z,0));
+    gridFit(lav,-w/2+0.7,w/2-0.7,back-0.45,back-0.45,1.0,1.0).forEach(p=>add('lavabo',p.x,p.z,180));
     add('puerta',w/2-0.6,back-0.06,0);
   } else if(type==='cocina'){
+    const n=sp.count||COUNTABLE.cocina.def, tables=Math.max(1,Math.ceil(n/4));
     for(let x=-w/2+0.6;x<=w/2-0.6;x+=1.05) add('mueble',x,front+0.35,0);
     add('lavabo',-(w/2)+0.4,front+0.9,-90);
-    add('mesaRedonda',0,d/4,0); for(let a=0;a<4;a++){const ang=a*90*DEG; add('silla',Math.sin(ang)*0.9,d/4+Math.cos(ang)*0.9,a*90+180);}
+    let placed=0;
+    gridFit(tables,-w/2+1.3,w/2-1.3,front+2.2,back-1.3,2.0,2.0).forEach(p=>{ add('mesaRedonda',p.x,p.z,0);
+      for(let a=0;a<4;a++){ if(placed<n){ const ang=a*90*DEG; add('silla',p.x+Math.sin(ang)*0.85,p.z+Math.cos(ang)*0.85,a*90+180); placed++; } } });
     add('puerta',w/2-0.6,back-0.06,0);
   } else if(type==='bodega'){
     for(let z=front+0.6;z<=back-0.6;z+=1.4){ add('estante',-(w/2)+0.5,z,90); add('estante',w/2-0.5,z,-90); }
@@ -609,9 +612,10 @@ function addSpace(type,w,d,opts={}){
     if(x>26){ x=0; z=last.z+ Math.max(...project.spaces.map(s=>s.d))/2 + d/2 + 1.5; } }
   const sp={id:uid('sp'),type,name:FURN_SPACE_LABEL(type),w:+w,d:+d,x,z,rot:0,objects:[]};
   if(type==='aula'){ sp.nivel=opts.nivel||'primaria'; sp.students=Math.max(1,Math.min(80,+opts.students||30)); sp.name='Aula '+NIVEL_LABEL[sp.nivel]; }
+  else if(COUNTABLE[type]){ sp.count=Math.max(1,Math.min(200,+opts.count||COUNTABLE[type].def)); }
   sp.objects=defaultObjects(sp);
   project.spaces.push(sp); addSpaceMesh(sp); renderTree(); select(sp.id); frameAll();
-  toast(type==='aula'? `${sp.name} · ${sp.students} alumnos` : `${sp.name} agregada (${w}×${d} m)`);
+  toast(type==='aula'? `${sp.name} · ${sp.students} alumnos` : (COUNTABLE[type]? `${sp.name} · ${sp.count} (${COUNTABLE[type].label.replace('N° de ','')})` : `${sp.name} agregada (${w}×${d} m)`));
 }
 function regenerateFurniture(sp){
   for(const o of sp.objects){ const g=obj3d.get(o.id); g&&g.parent&&g.parent.remove(g); g&&disposeTree(g); obj3d.delete(o.id); parentSpace.delete(o.id); }
@@ -786,6 +790,8 @@ function renderProps(){
       ${sp.type==='aula'?`<h4>Aula (nivel y alumnos)</h4>
       <div class="r"><label>Nivel</label><select id="pNivel">${Object.entries(NIVEL_LABEL).map(([k,v])=>`<option value="${k}" ${k===(sp.nivel||'primaria')?'selected':''}>${v}</option>`).join('')}</select></div>
       <div class="r"><label>Alumnos</label><input id="pStu" type="number" min="1" max="80" value="${sp.students||30}"></div>`:''}
+      ${COUNTABLE[sp.type]?`<h4>Cantidad</h4>
+      <div class="r"><label>${COUNTABLE[sp.type].label}</label><input id="pCount" type="number" min="1" max="200" value="${sp.count||COUNTABLE[sp.type].def}"></div>`:''}
       <h4>Mobiliario</h4>
       <div class="r"><button id="pRegen" class="gold" style="flex:1">↻ Regenerar por plantilla</button></div>
       <div class="r"><button id="pDel" style="flex:1;color:var(--err)">🗑 Eliminar espacio</button></div>
@@ -803,6 +809,7 @@ function renderProps(){
       props.querySelector('#pNivel').onchange=e=>{sp.nivel=e.target.value; sp.name='Aula '+NIVEL_LABEL[sp.nivel]; regenerateFurniture(sp);};
       props.querySelector('#pStu').onchange=e=>{sp.students=Math.max(1,Math.min(80,+e.target.value||30)); regenerateFurniture(sp);};
     }
+    if(COUNTABLE[sp.type]){ props.querySelector('#pCount').onchange=e=>{sp.count=Math.max(1,Math.min(200,+e.target.value||COUNTABLE[sp.type].def)); regenerateFurniture(sp);}; }
   } else {
     const sp=project.spaces.find(s=>s.id===spId); const o=sp.objects.find(o=>o.id===selId);
     rightTitle.textContent='Mueble';
@@ -833,7 +840,7 @@ for(const k of CATALOG_ORDER){ const b=document.createElement('button');
 
 /* ============================ Barra superior =========================== */
 let snap=true;
-document.getElementById('btnAddSpace').onclick=()=>addSpace(document.getElementById('spaceType').value, +document.getElementById('spaceW').value, +document.getElementById('spaceD').value);
+document.getElementById('btnAddSpace').onclick=()=>{ const t=document.getElementById('spaceType').value; const oc=document.getElementById('otherCount'); addSpace(t, +document.getElementById('spaceW').value, +document.getElementById('spaceD').value, COUNTABLE[t]?{count:+oc.value||COUNTABLE[t].def}:{}); };
 const addAula=(nivel)=>{ const n=+document.getElementById('students').value||30; addSpace('aula',+document.getElementById('spaceW').value,+document.getElementById('spaceD').value,{nivel,students:n}); };
 document.getElementById('lvlPre').onclick=()=>addAula('preescolar');
 document.getElementById('lvlPri').onclick=()=>addAula('primaria');
@@ -843,7 +850,7 @@ document.getElementById('btnSnap').onclick=e=>{snap=!snap; e.target.textContent=
 document.getElementById('btnTop').onclick=()=>{ const t=controls.target; camera.position.set(t.x,38,t.z+0.01); controls.update(); };
 document.getElementById('btnIso').onclick=()=>{ const t=controls.target; camera.position.set(t.x+14,15,t.z+16); controls.update(); };
 const DEF_SIZE={aula:[8,8],computo:[8,8],laboratorio:[8,8],biblioteca:[9,7],administrativa:[7,6],docente:[6,5],banos:[5,3],cocina:[6,5],bodega:[6,4],generico:[6,5]};
-document.getElementById('spaceType').onchange=e=>{ const def=DEF_SIZE[e.target.value]; if(def){document.getElementById('spaceW').value=def[0];document.getElementById('spaceD').value=def[1];} };
+document.getElementById('spaceType').onchange=e=>{ const t=e.target.value; const def=DEF_SIZE[t]; if(def){document.getElementById('spaceW').value=def[0];document.getElementById('spaceD').value=def[1];} const oc=document.getElementById('otherCount'); if(COUNTABLE[t]){ oc.disabled=false; oc.value=COUNTABLE[t].def; } else { oc.disabled=true; oc.value=''; } };
 document.getElementById('sz88').onclick=()=>{document.getElementById('spaceW').value=8;document.getElementById('spaceD').value=8;};
 document.getElementById('sz68').onclick=()=>{document.getElementById('spaceW').value=6;document.getElementById('spaceD').value=8;};
 
@@ -938,7 +945,7 @@ function toast(m){ toastEl.textContent=m; toastEl.classList.add('show'); clearTi
 renderTree(); renderProps();
 const _p=new URLSearchParams(location.search); const _demo=_p.get('demo');
 if(_demo==='aula'){ const nivel=_p.get('nivel')||'primaria'; const n=Math.max(1,Math.min(80,+_p.get('n')||30)); document.getElementById('students').value=n; addSpace('aula',8,8,{nivel,students:n}); }
-else if(_demo && SPACE_LABELS[_demo]){ const d=DEF_SIZE[_demo]||[8,8]; const el=document.getElementById('spaceType'); if(el.querySelector(`option[value="${_demo}"]`)) el.value=_demo; addSpace(_demo,d[0],d[1]); }
+else if(_demo && SPACE_LABELS[_demo]){ const d=DEF_SIZE[_demo]||[8,8]; const el=document.getElementById('spaceType'); if(el.querySelector(`option[value="${_demo}"]`)){ el.value=_demo; el.dispatchEvent(new Event('change')); } const oc=COUNTABLE[_demo]?{count:Math.max(1,Math.min(200,+_p.get('n')||COUNTABLE[_demo].def))}:{}; addSpace(_demo,d[0],d[1],oc); }
 else addSpace('aula',8,8,{nivel:'primaria',students:30});
 select(null); frameAll();
 window.__p3d={project};
