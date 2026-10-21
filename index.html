@@ -160,6 +160,7 @@
       <label>Proyecto</label>
       <button id="btnSave">Guardar</button>
       <button id="btnOpen">Abrir</button>
+      <button id="btnClear" title="Borrar todos los espacios" style="color:var(--err)">🗑 Borrar todo</button>
       <input id="fileOpen" type="file" accept="application/json,.json" hidden>
     </div>
   </div>
@@ -508,16 +509,19 @@ function defaultObjects(sp){
     add('escritorio',-(w/2)+1.0, front+0.95, 0);
     add('sillaMaestro',-(w/2)+1.0, front+1.65, 180);
     add('puerta', w/2-0.6, back-0.06, 0);
-    const L={preescolar:{sx:1.5,sz:1.4,table:'mesaPre',chair:'sillaPre',coff:0.5},
-             primaria:{sx:1.05,sz:1.2,table:'mesaPri',chair:'sillaPri',coff:0.45},
-             secundaria:{sx:0.95,sz:1.05,table:null,chair:'pupitreSec',coff:0}}[nivel]
-            ||{sx:1.05,sz:1.2,table:'mesaPri',chair:'sillaPri',coff:0.45};
-    const x0=-w/2+0.9, x1=w/2-0.9, z0=front+2.3;
-    const cols=Math.max(1, Math.floor((x1-x0)/L.sx)+1);
+    const L={preescolar:{table:'mesaPre',chair:'sillaPre',coff:0.5,halfX:0.62},
+             primaria:{table:'mesaPri',chair:'sillaPri',coff:0.45,halfX:0.45},
+             secundaria:{table:null,chair:'pupitreSec',coff:0,halfX:0.5}}[nivel]
+            ||{table:'mesaPri',chair:'sillaPri',coff:0.45,halfX:0.45};
+    // acomodo que SIEMPRE cabe dentro del aula (se aprietan si son muchos)
+    const mX=L.halfX+0.12, x0=-w/2+mX, x1=w/2-mX, UW=Math.max(0.3,x1-x0);
+    const zTop=front+2.1, zBot=back-0.5-L.coff, UD=Math.max(0.3,zBot-zTop);
+    const cols=Math.max(1, Math.min(students, Math.round(Math.sqrt(students*UW/UD))||1));
+    const rows=Math.ceil(students/cols);
     for(let i=0;i<students;i++){
-      const r=Math.floor(i/cols), c=i%cols;
-      const x=cols===1? (x0+x1)/2 : x0+(x1-x0)*(c/(cols-1));
-      const z=z0 + r*L.sz;
+      const c=i%cols, r=Math.floor(i/cols);
+      const x=cols===1? (x0+x1)/2 : x0+UW*(c/(cols-1));
+      const z=rows===1? (zTop+zBot)/2 : zTop+UD*(r/(rows-1));
       if(L.table){ add(L.table,x,z,0); add(L.chair,x,z+L.coff,180); } else add(L.chair,x,z,0);
     }
   } else if(type==='computo'){
@@ -854,6 +858,13 @@ function download(blob,name){ const a=document.createElement('a'); a.href=URL.cr
 document.getElementById('btnSave').onclick=()=>{
   const data=JSON.stringify({app:'planos3d-aulas',version:1,spaces:project.spaces},null,1);
   download(new Blob([data],{type:'application/json'}),'plano_aulas.json'); toast('Proyecto guardado (.json)');
+};
+document.getElementById('btnClear').onclick=()=>{
+  if(!project.spaces.length){ toast('No hay nada que borrar'); return; }
+  if(!confirm('¿Borrar TODOS los espacios del plano? Esta acción no se puede deshacer.')) return;
+  for(const g of obj3d.values()){ g.parent&&g.parent.remove(g); disposeTree(g); }
+  obj3d.clear(); parentSpace.clear(); project={spaces:[]}; if(window.__p3d) window.__p3d.project=project;
+  select(null); renderTree(); renderProps(); toast('Plano vaciado');
 };
 document.getElementById('btnOpen').onclick=()=>document.getElementById('fileOpen').click();
 document.getElementById('fileOpen').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader();
