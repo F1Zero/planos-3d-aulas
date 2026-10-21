@@ -949,19 +949,36 @@ document.querySelectorAll('.nav [data-nav]').forEach(el=>{
 /* ============================ Docente virtual + primera persona =========================== */
 const clock=new THREE.Clock(); const keys=new Set();
 let avatar=null, fpMode=false;
-function makeAvatar(){
+function makeAvatar(){ // docente low-poly (mira hacia -Z); hecha con primitivas (CC0)
   const g=new THREE.Group(); g.userData.isAvatar=true;
-  const skin=mat(0xe8b394), blouse=mat(C.guinda), skirt=mat(0x32374a), hair=mat(0x2a2320), shoe=mat(0x20232a), leg=mat(0x3a3f4a);
-  g.add(cyl(0.07,0.5,leg,-0.1,0.25,0,8)); g.add(cyl(0.07,0.5,leg,0.1,0.25,0,8));
-  g.add(box(0.15,0.06,0.24,shoe,-0.1,0.03,-0.03)); g.add(box(0.15,0.06,0.24,shoe,0.1,0.03,-0.03));
-  const sk=new THREE.Mesh(new THREE.ConeGeometry(0.27,0.42,18),skirt); sk.position.set(0,0.62,0); sk.castShadow=true; g.add(sk);
-  g.add(box(0.34,0.44,0.2,blouse,0,0.98,0));
-  g.add(cyl(0.05,0.42,blouse,-0.22,0.98,0,8)); g.add(cyl(0.05,0.42,blouse,0.22,0.98,0,8));
-  g.add(cyl(0.045,0.06,skin,0,1.24,0,8));
-  const head=new THREE.Mesh(new THREE.SphereGeometry(0.12,18,14),skin); head.position.set(0,1.37,0); head.castShadow=true; g.add(head);
-  const hr=new THREE.Mesh(new THREE.SphereGeometry(0.135,18,14),hair); hr.position.set(0,1.4,0.02); g.add(hr);
-  g.add(box(0.05,0.04,0.05,skin,0,1.36,-0.12)); // nariz (frente hacia -Z)
-  g.userData.eye=1.45;
+  const sph=(r,m,x,y,z,sx,sy,sz)=>{ const s=new THREE.Mesh(new THREE.SphereGeometry(r,18,14),m); s.position.set(x,y,z); if(sx!==undefined)s.scale.set(sx,sy,sz); s.castShadow=true; return s; };
+  const frus=(rt,rb,h,m,x,y,z)=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,18),m); c.position.set(x,y,z); c.castShadow=true; return c; };
+  const skin=mat(0xf0c3a0), blouse=mat(C.guinda), skirt=mat(0x2d3350), hair=mat(0x3a2a1e), shoe=mat(0x22262e), legM=mat(0xe3b58c), frame=mat(0x20232a), gold=mat(C.gold);
+  // zapatos + piernas
+  g.add(box(0.12,0.06,0.2,shoe,-0.09,0.03,-0.02)); g.add(box(0.12,0.06,0.2,shoe,0.09,0.03,-0.02));
+  g.add(cyl(0.055,0.46,legM,-0.09,0.29,0,10)); g.add(cyl(0.055,0.46,legM,0.09,0.29,0,10));
+  // falda + torso (blusa guinda)
+  g.add(frus(0.15,0.27,0.4,skirt,0,0.72,0));
+  g.add(frus(0.17,0.15,0.42,blouse,0,1.1,0));
+  g.add(box(0.07,0.1,0.02,gold,0.07,1.16,-0.15)); // gafete
+  // brazos + manos + libro
+  const armL=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.04,0.44,10),blouse); armL.position.set(-0.2,1.08,0); armL.rotation.z=0.14; armL.castShadow=true; g.add(armL);
+  const armR=armL.clone(); armR.position.x=0.2; armR.rotation.z=-0.14; g.add(armR);
+  g.add(sph(0.045,skin,-0.235,0.86,0)); g.add(sph(0.05,skin,0.235,0.9,-0.02));
+  g.add(box(0.15,0.04,0.11,mat(0x2e7d32),0.25,0.93,-0.04)); // libro
+  // cuello + cabeza
+  g.add(cyl(0.05,0.08,skin,0,1.37,0,10));
+  g.add(sph(0.13,skin,0,1.5,0));
+  // cabello (melena corta)
+  g.add(sph(0.145,hair,0,1.54,0.03,1,1.02,1.12));
+  g.add(sph(0.08,hair,-0.1,1.43,0.04)); g.add(sph(0.08,hair,0.1,1.43,0.04));
+  // cara (frente -Z): lentes, ojos, nariz, boca
+  g.add(box(0.075,0.055,0.012,frame,-0.05,1.52,-0.125)); g.add(box(0.075,0.055,0.012,frame,0.05,1.52,-0.125));
+  g.add(box(0.04,0.012,0.012,frame,0,1.52,-0.125));
+  g.add(sph(0.02,frame,-0.05,1.52,-0.12)); g.add(sph(0.02,frame,0.05,1.52,-0.12));
+  g.add(box(0.03,0.045,0.03,skin,0,1.47,-0.13));
+  g.add(box(0.05,0.013,0.01,mat(0x9c3a4a),0,1.44,-0.125));
+  g.userData.eye=1.5;
   return g;
 }
 function spawnAvatar(){ if(avatar) return;
