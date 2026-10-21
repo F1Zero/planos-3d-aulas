@@ -965,9 +965,19 @@ function makeAvatar(){
   return g;
 }
 function spawnAvatar(){ if(avatar) return;
-  avatar=makeAvatar(); avatar.position.set(controls.target.x,0,controls.target.z); avatar.rotation.y=0; scene.add(avatar);
+  avatar=makeAvatar();
+  let sp=null;
+  if(project.spaces.length){
+    sp=(selId && project.spaces.find(s=>s.id===selId))||null;
+    if(!sp){ const t=controls.target; let bd=Infinity; for(const s of project.spaces){ const dd=Math.hypot(s.x-t.x,s.z-t.z); if(dd<bd){bd=dd; sp=s;} } }
+  }
+  if(sp){ const g=obj3d.get(sp.id); g.updateWorldMatrix(true,false);
+    const wp=g.localToWorld(new THREE.Vector3(0,0,-sp.d/2+1.4)); // frente del cuarto (ante el pizarrón)
+    avatar.position.set(wp.x,0,wp.z); avatar.rotation.y=(sp.rot||0)*DEG+Math.PI; } // de espaldas al pizarrón, mirando a los alumnos
+  else { avatar.position.set(controls.target.x,0,controls.target.z); avatar.rotation.y=Math.PI; }
+  scene.add(avatar);
   document.getElementById('avatarPad').style.display='flex'; document.getElementById('btnAvatar').classList.add('on');
-  toast('Docente agregada · muévela con ← ↑ ↓ →'); }
+  toast('Docente al frente, mirando a los alumnos · muévela con ← ↑ ↓ →'); }
 function removeAvatar(){ if(!avatar) return; if(fpMode) exitFP(); scene.remove(avatar); disposeTree(avatar); avatar=null;
   document.getElementById('avatarPad').style.display='none'; document.getElementById('btnAvatar').classList.remove('on'); }
 function toggleAvatar(){ avatar? removeAvatar(): spawnAvatar(); }
