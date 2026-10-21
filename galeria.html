@@ -24,10 +24,13 @@
   .card h3{margin:0;font-size:16px;color:var(--guinda)}
   .card .size{display:inline-block;align-self:flex-start;background:var(--dorado);color:#3a2e12;border-radius:20px;font-size:11px;padding:2px 9px;font-weight:600}
   .card p{margin:0;font-size:12.5px;color:var(--muted);line-height:1.5;flex:1}
-  .card .act{display:flex;gap:8px;padding:0 16px 16px}
+  .card .act{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 16px}
   .card .act a{flex:1;text-decoration:none}
   .card .act button{width:100%;border:1px solid var(--guinda);background:var(--guinda);color:#fff;border-radius:9px;padding:9px;font-weight:600;cursor:pointer;font-size:13px}
   .card .act button:hover{background:var(--guinda2)}
+  .card .act .num{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:6px 10px}
+  .card .act .num label{font-size:12px;color:var(--muted)}
+  .card .act .num input{width:64px;border:1px solid var(--line);border-radius:6px;padding:5px 7px;font-size:13px;text-align:center}
   footer{max-width:1100px;margin:0 auto 40px;padding:0 22px;color:var(--muted);font-size:12px;line-height:1.6}
 </style>
 </head>
@@ -52,9 +55,9 @@
 
 <script>
 const CARDS=[
-  {t:'aula', href:'index.html?demo=aula&nivel=preescolar&n=24', i:'🧸', n:'Aula Preescolar', sz:'8×8 m', d:'Mesas trapezoidales (capuchino) y sillas chicas guinda, mesa y silla del maestro, pizarrón blanco. Eliges el número de alumnos (mesas = sillas).'},
-  {t:'aula', href:'index.html?demo=aula&nivel=primaria&n=30', i:'🧑‍🏫', n:'Aula Primaria', sz:'8×8 m', d:'Mesas trapezoidales individuales y sillas (vino), mesa y silla del maestro, pizarrón blanco. Eliges el número de alumnos (mesas = sillas).'},
-  {t:'aula', href:'index.html?demo=aula&nivel=secundaria&n=30', i:'🎓', n:'Aula Secundaria', sz:'8×8 m', d:'Pupitres con paleta (vino), uno por alumno, mesa y silla del maestro, pizarrón blanco. Eliges el número de alumnos.'},
+  {nivel:'preescolar', num:24, i:'🧸', n:'Aula Preescolar', sz:'8×8 m', d:'Mesas trapezoidales (capuchino) y sillas chicas guinda, mesa y silla del maestro, pizarrón blanco.'},
+  {nivel:'primaria', num:30, i:'🧑‍🏫', n:'Aula Primaria', sz:'8×8 m', d:'Mesas trapezoidales individuales y sillas (vino), mesa y silla del maestro, pizarrón blanco.'},
+  {nivel:'secundaria', num:30, i:'🎓', n:'Aula Secundaria', sz:'8×8 m', d:'Pupitres con paleta (vino), uno por alumno, mesa y silla del maestro, pizarrón blanco.'},
   {t:'computo',    i:'💻',   n:'Aula de cómputo',    sz:'8×8 m', d:'Mesas de cómputo con PC y sillas acomodadas en “U”, escritorio del maestro y pizarrón.'},
   {t:'laboratorio',i:'🔬',   n:'Laboratorio',        sz:'8×8 m', d:'Mesas de laboratorio con taburetes, pizarrón, lavabo y librero de reactivos.'},
   {t:'biblioteca', i:'📚',   n:'Biblioteca',         sz:'9×7 m', d:'Libreros perimetrales y mesas redondas con sillas de lectura.'},
@@ -68,9 +71,13 @@ const CARDS=[
 const g=document.getElementById('grid');
 for(const c of CARDS){
   const el=document.createElement('div'); el.className='card';
+  const act = c.nivel
+    ? `<div class="num"><label>N° de alumnos</label><input type="number" min="1" max="80" value="${c.num||30}"></div><button class="open">Abrir ejemplo 3D</button>`
+    : `<a href="index.html?demo=${c.t}"><button>Abrir ejemplo 3D</button></a>`;
   el.innerHTML=`<div class="top">${c.i}</div>
     <div class="body"><h3>${c.n}</h3><span class="size">${c.sz}</span><p>${c.d}</p></div>
-    <div class="act"><a href="${c.href||('index.html?demo='+c.t)}"><button>Abrir ejemplo 3D</button></a></div>`;
+    <div class="act">${act}</div>`;
+  if(c.nivel){ const inp=el.querySelector('input'); el.querySelector('.open').onclick=()=>{ const n=Math.max(1,Math.min(80,parseInt(inp.value,10)||30)); location.href=`index.html?demo=aula&nivel=${c.nivel}&n=${n}`; }; }
   g.appendChild(el);
 }
 </script>

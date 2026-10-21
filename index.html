@@ -509,19 +509,21 @@ function defaultObjects(sp){
     add('escritorio',-(w/2)+1.0, front+0.95, 0);
     add('sillaMaestro',-(w/2)+1.0, front+1.65, 180);
     add('puerta', w/2-0.6, back-0.06, 0);
-    const L={preescolar:{table:'mesaPre',chair:'sillaPre',coff:0.5,halfX:0.62},
-             primaria:{table:'mesaPri',chair:'sillaPri',coff:0.45,halfX:0.45},
-             secundaria:{table:null,chair:'pupitreSec',coff:0,halfX:0.5}}[nivel]
-            ||{table:'mesaPri',chair:'sillaPri',coff:0.45,halfX:0.45};
-    // acomodo que SIEMPRE cabe dentro del aula (se aprietan si son muchos)
-    const mX=L.halfX+0.12, x0=-w/2+mX, x1=w/2-mX, UW=Math.max(0.3,x1-x0);
-    const zTop=front+2.1, zBot=back-0.5-L.coff, UD=Math.max(0.3,zBot-zTop);
-    const cols=Math.max(1, Math.min(students, Math.round(Math.sqrt(students*UW/UD))||1));
+    const L={preescolar:{table:'mesaPre',chair:'sillaPre',coff:0.5,halfX:0.62,px:1.3,pz:1.3},
+             primaria:{table:'mesaPri',chair:'sillaPri',coff:0.45,halfX:0.45,px:1.0,pz:1.15},
+             secundaria:{table:null,chair:'pupitreSec',coff:0,halfX:0.66,px:0.95,pz:1.05}}[nivel]
+            ||{table:'mesaPri',chair:'sillaPri',coff:0.45,halfX:0.45,px:1.0,pz:1.15};
+    // acomodo centrado que SIEMPRE cabe dentro del aula (se comprime si son muchos)
+    const mX=L.halfX+0.1, x1=w/2-mX, UW=Math.max(0.3,2*x1);
+    const zTop=front+2.1, zBot=back-0.45-L.coff, UD=Math.max(0.3,zBot-zTop);
+    const cols=Math.max(1, Math.min(students, Math.floor(UW/L.px)+1));
     const rows=Math.ceil(students/cols);
+    const sX=cols>1? Math.min(L.px, UW/(cols-1)) : 0;
+    const sZ=rows>1? Math.min(L.pz, UD/(rows-1)) : 0;
+    const startX=-((cols-1)*sX)/2;
     for(let i=0;i<students;i++){
       const c=i%cols, r=Math.floor(i/cols);
-      const x=cols===1? (x0+x1)/2 : x0+UW*(c/(cols-1));
-      const z=rows===1? (zTop+zBot)/2 : zTop+UD*(r/(rows-1));
+      const x=startX + c*sX, z=zTop + r*sZ;
       if(L.table){ add(L.table,x,z,0); add(L.chair,x,z+L.coff,180); } else add(L.chair,x,z,0);
     }
   } else if(type==='computo'){
