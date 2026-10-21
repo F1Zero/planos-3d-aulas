@@ -627,17 +627,31 @@ function resizeSpace(sp){
   kids.forEach(c=>g.add(c));
   renderTree();
 }
+// busca un lugar libre dentro del cuarto para un mueble nuevo (evita encimar y respeta muros)
+function freeSpot(sp,kind){
+  const f=FURN[kind]?.foot||[0.6,0.5]; const hx=f[0]/2, hz=f[1]/2;
+  const x0=-sp.w/2+hx+0.2, x1=sp.w/2-hx-0.2, z0=-sp.d/2+hz+0.2, z1=sp.d/2-hz-0.2;
+  if(x1<x0||z1<z0) return {x:0,z:0};
+  const minD=Math.max(0.5, Math.max(hx,hz)+0.2);
+  for(let z=z0; z<=z1+1e-6; z+=0.4) for(let x=x0; x<=x1+1e-6; x+=0.4){
+    let ok=true; for(const o of sp.objects){ if(Math.hypot(o.x-x,o.z-z)<minD){ok=false;break;} }
+    if(ok) return {x:+x.toFixed(2),z:+z.toFixed(2)};
+  }
+  // si está lleno, deja uno cerca del centro con pequeño desfase
+  return {x:+(Math.max(x0,Math.min(x1,(Math.random()-0.5)*sp.w*0.4))).toFixed(2), z:+(Math.max(z0,Math.min(z1,(Math.random()-0.5)*sp.d*0.4))).toFixed(2)};
+}
 function addFurniture(kind){
   let sp = selId && (project.spaces.find(s=>s.id===selId) || project.spaces.find(s=>s.id===parentSpace.get(selId)));
   if(!sp) sp=project.spaces[0];
   if(!sp){ toast('Primero agrega un espacio'); return; }
-  const o={id:uid('o'),kind,label:FURN[kind]?.label||kind,x:0,z:0,rot:0};
+  const p=freeSpot(sp,kind);
+  const o={id:uid('o'),kind,label:FURN[kind]?.label||kind,x:p.x,z:p.z,rot:0};
   sp.objects.push(o); addObjectMesh(sp,o); renderTree(); select(o.id); toast((FURN[kind]?.label||kind)+' agregado');
 }
 function duplicateSel(){
   if(!selId) return; const spId=parentSpace.get(selId); if(!spId) return;
   const sp=project.spaces.find(s=>s.id===spId); const src=sp.objects.find(o=>o.id===selId); if(!src) return;
-  const o={...src,id:uid('o'),x:src.x+0.5,z:src.z+0.5}; sp.objects.push(o); addObjectMesh(sp,o); renderTree(); select(o.id);
+  const p=freeSpot(sp,src.kind); const o={...src,id:uid('o'),x:p.x,z:p.z}; sp.objects.push(o); addObjectMesh(sp,o); renderTree(); select(o.id);
 }
 function deleteSel(){
   if(!selId) return;
