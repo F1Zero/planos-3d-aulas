@@ -950,7 +950,9 @@ document.querySelectorAll('.nav [data-nav]').forEach(el=>{
 /* ============================ 1ª persona + Docente (GLB con caminata) =========================== */
 const clock=new THREE.Clock(); const keys=new Set();
 let fpMode=false; const FP_EYE=1.5; const fpPos=new THREE.Vector3(); let fpYaw=0;
-let docente=null, docMixer=null, docWalk=null, docLoading=false, docMoving=false, docenteYaw=0;
+let docente=null, docMixer=null, docLoading=false, docenteYaw=0;
+let idleAction=null, walkAction=null, curAction=null;
+function fadeTo(a){ if(!a||curAction===a) return; if(curAction) curAction.fadeOut(0.25); a.reset().fadeIn(0.25).play(); curAction=a; }
 const MODEL_OFFSET=Math.PI; // calibración: el modelo mira al -Z del wrapper
 function padVis(){ document.getElementById('walkPad').style.display=(fpMode||docente)?'flex':'none'; }
 
@@ -988,22 +990,22 @@ function placeDocente(){
   const loader=new GLTFLoader();
   loader.load('assets/docente.glb', gl=>{
     const model=gl.scene; model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; } });
-    let box=new THREE.Box3().setFromObject(model); const size=box.getSize(new THREE.Vector3());
-    model.scale.setScalar(1.7/(size.y||1.7));
-    box=new THREE.Box3().setFromObject(model); model.position.y-=box.min.y; // pies al piso
-    model.rotation.y=MODEL_OFFSET;
     const wrap=new THREE.Group(); wrap.add(model);
     const p=frontOfSpace(); wrap.position.set(p.x,0,p.z); docenteYaw=p.yaw; wrap.rotation.y=docenteYaw;
-    scene.add(wrap); docente=wrap;
+    scene.add(wrap); wrap.updateMatrixWorld(true);
+    // escala a ~1.7 m (con matrices actualizadas) y pies al piso
+    let box=new THREE.Box3().setFromObject(model); const h=box.getSize(new THREE.Vector3()).y||1.7;
+    model.scale.multiplyScalar(1.7/h); model.rotation.y=MODEL_OFFSET; wrap.updateMatrixWorld(true);
+    box=new THREE.Box3().setFromObject(model); model.position.y-=box.min.y; wrap.updateMatrixWorld(true);
+    docente=wrap;
     document.getElementById('btnDocente').classList.add('on'); padVis(); docLoading=false;
     toast('Docente lista · camina con ← ↑ ↓ →');
-    loader.load('assets/walk.glb', wg=>{ if(!wg.animations.length) return;
-      const clip=retargetWalk(wg.animations[0], model);
-      docMixer=new THREE.AnimationMixer(model); docWalk=docMixer.clipAction(clip); docWalk.play(); docWalk.paused=true;
-    }, undefined, e=>console.warn('walk', e));
+    docMixer=new THREE.AnimationMixer(model);
+    loader.load('assets/idle.glb', g2=>{ if(g2.animations.length){ idleAction=docMixer.clipAction(retargetWalk(g2.animations[0],model)); if(!curAction) fadeTo(idleAction); } }, undefined, e=>console.warn('idle',e));
+    loader.load('assets/walk.glb', g2=>{ if(g2.animations.length){ walkAction=docMixer.clipAction(retargetWalk(g2.animations[0],model)); } }, undefined, e=>console.warn('walk',e));
   }, undefined, e=>{ docLoading=false; console.error(e); toast('No se pudo cargar el modelo de la docente'); });
 }
-function removeDocente(){ if(!docente) return; scene.remove(docente); docente.traverse(o=>{ if(o.isMesh) o.geometry?.dispose?.(); }); docente=null; docMixer=null; docWalk=null;
+function removeDocente(){ if(!docente) return; scene.remove(docente); docente.traverse(o=>{ if(o.isMesh) o.geometry?.dispose?.(); }); docente=null; docMixer=null; idleAction=walkAction=curAction=null;
   document.getElementById('btnDocente').classList.remove('on'); padVis(); }
 function toggleDocente(){ docente? removeDocente(): placeDocente(); }
 function updateDocente(dt){
@@ -1013,8 +1015,7 @@ function updateDocente(dt){
   const f=new THREE.Vector3(-Math.sin(docenteYaw),0,-Math.cos(docenteYaw));
   if(keys.has('ArrowUp')){ docente.position.addScaledVector(f,sp); moving=true; }
   if(keys.has('ArrowDown')){ docente.position.addScaledVector(f,-sp); moving=true; }
-  if(docMixer){ if(moving){ docWalk.paused=false; docMixer.update(dt); } else if(docMoving){ docWalk.time=0; docMixer.update(0); docWalk.paused=true; } }
-  docMoving=moving;
+  fadeTo(moving? (walkAction||idleAction) : (idleAction||walkAction));
 }
 document.getElementById('btnFP').onclick=toggleFP;
 document.getElementById('btnDocente').onclick=toggleDocente;
@@ -1027,7 +1028,7 @@ window.addEventListener('blur',()=>keys.clear());
 /* ============================ Loop / resize =========================== */
 function resize(){ const r=canvas.parentElement.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/r.height; camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(canvas.parentElement); resize();
-(function loop(){ requestAnimationFrame(loop); const dt=Math.min(0.05,clock.getDelta()); if(fpMode) updateFP(dt); else controls.update(); if(docente && !fpMode) updateDocente(dt); sun.target.position.copy(controls.target); renderer.render(scene,camera); })();
+(function loop(){ requestAnimationFrame(loop); const dt=Math.min(0.05,clock.getDelta()); if(fpMode) updateFP(dt); else controls.update(); if(docente && !fpMode) updateDocente(dt); if(docMixer) docMixer.update(dt); sun.target.position.copy(controls.target); renderer.render(scene,camera); })();
 
 /* ============================ Toast =========================== */
 let toastT; const toastEl=document.getElementById('toast');
