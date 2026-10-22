@@ -158,7 +158,6 @@
       <button id="btnTop" title="Vista superior">Planta</button>
       <button id="btnIso" title="Vista 3D">3D</button>
       <button id="btnFP" title="Vista en primera persona (flechas para caminar)">👁 1ª persona</button>
-      <button id="btnDocente" title="Docente virtual: camina con las flechas ← ↑ ↓ →">👩‍🏫 Docente</button>
     </div>
     <div class="group">
       <label>Exportar</label>
@@ -247,7 +246,6 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
 /* ============================ Constantes =========================== */
 const WALL_H = 2.7, WALL_T = 0.12, GRID = 0.25, DEG = Math.PI/180;
@@ -750,7 +748,7 @@ canvas.addEventListener('pointercancel',endDrag);
 
 window.addEventListener('keydown',e=>{
   if(/input|select|textarea/i.test(document.activeElement.tagName)) return;
-  if((fpMode||docente) && (e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight')){ keys.add(e.key); e.preventDefault(); return; }
+  if(fpMode && (e.key==='ArrowUp'||e.key==='ArrowDown'||e.key==='ArrowLeft'||e.key==='ArrowRight')){ keys.add(e.key); e.preventDefault(); return; }
   if((e.key==='Delete'||e.key==='Backspace')&&selId){ e.preventDefault(); deleteSel(); }
   else if(e.key==='r'||e.key==='R'){ rotateSel(e.shiftKey?-90:90); }
   else if((e.key==='d'||e.key==='D')&&!e.ctrlKey){ duplicateSel(); }
@@ -947,19 +945,15 @@ document.querySelectorAll('.nav [data-nav]').forEach(el=>{
   el.addEventListener('pointerdown',start); el.addEventListener('pointerup',stop); el.addEventListener('pointerleave',stop); el.addEventListener('pointercancel',stop);
 });
 
-/* ============================ 1ª persona + Docente (GLB con caminata) =========================== */
+/* ============================ Vista en primera persona (caminar) =========================== */
 const clock=new THREE.Clock(); const keys=new Set();
 let fpMode=false; const FP_EYE=1.5; const fpPos=new THREE.Vector3(); let fpYaw=0;
-let docente=null, docLoading=false, docenteYaw=0, docBones=null, docPhase=0;
-const MODEL_OFFSET=Math.PI; // calibración: el modelo mira al -Z del wrapper
-function padVis(){ document.getElementById('walkPad').style.display=(fpMode||docente)?'flex':'none'; }
-
 function enterFP(){ fpMode=true; controls.enabled=false;
   fpPos.set(controls.target.x, FP_EYE, controls.target.z+3); fpYaw=0;
-  document.getElementById('btnFP').classList.add('on'); padVis();
-  toast('Primera persona · flechas para caminar · “3D” o Esc para salir'); }
+  document.getElementById('walkPad').style.display='flex'; document.getElementById('btnFP').classList.add('on');
+  toast('Primera persona · flechas ← ↑ ↓ → para caminar · “3D” o Esc para salir'); }
 function exitFP(){ if(!fpMode) return; fpMode=false; controls.enabled=true; keys.clear();
-  document.getElementById('btnFP').classList.remove('on'); padVis(); }
+  document.getElementById('walkPad').style.display='none'; document.getElementById('btnFP').classList.remove('on'); }
 function toggleFP(){ fpMode? exitFP(): enterFP(); }
 function updateFP(dt){
   const tr=2.0*dt, sp=3.0*dt;
@@ -970,63 +964,7 @@ function updateFP(dt){
   fpPos.y=FP_EYE; camera.position.copy(fpPos);
   camera.lookAt(fpPos.x+f.x*3, FP_EYE-0.15, fpPos.z+f.z*3);
 }
-
-function frontOfSpace(){
-  let sp=(selId && project.spaces.find(s=>s.id===selId))||null;
-  if(!sp && project.spaces.length){ const t=controls.target; let bd=Infinity; for(const s of project.spaces){ const dd=Math.hypot(s.x-t.x,s.z-t.z); if(dd<bd){bd=dd; sp=s;} } }
-  if(sp){ const g=obj3d.get(sp.id); g.updateWorldMatrix(true,false); const wp=g.localToWorld(new THREE.Vector3(0,0,-sp.d/2+1.4)); return {x:wp.x,z:wp.z,yaw:(sp.rot||0)*DEG+Math.PI}; }
-  return {x:controls.target.x,z:controls.target.z,yaw:Math.PI};
-}
-function retargetWalk(clip, model){
-  const map={}; model.traverse(o=>{ if(o.isBone) map[o.name.replace(/_\d+$/,'')]=o.name; });
-  // se omite la cadera (Hips): su rotación en este export voltea al modelo al piso
-  clip.tracks=clip.tracks.filter(t=>{ const i=t.name.indexOf('.'); const base=t.name.slice(0,i); return map[base] && base!=='Hips'; });
-  clip.tracks.forEach(t=>{ const i=t.name.indexOf('.'); t.name=map[t.name.slice(0,i)]+t.name.slice(i); });
-  return clip;
-}
-function placeDocente(){
-  if(docLoading||docente) return; docLoading=true; toast('Cargando docente…');
-  const loader=new GLTFLoader();
-  loader.load('assets/docente.glb', gl=>{
-    const model=gl.scene; model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.frustumCulled=false; } });
-    const wrap=new THREE.Group(); wrap.add(model);
-    const p=frontOfSpace(); wrap.position.set(p.x,0,p.z); docenteYaw=p.yaw; wrap.rotation.y=docenteYaw;
-    scene.add(wrap); wrap.updateMatrixWorld(true);
-    // escala a ~1.7 m (con matrices actualizadas) y pies al piso
-    let box=new THREE.Box3().setFromObject(model); const h=box.getSize(new THREE.Vector3()).y||1.7;
-    model.scale.multiplyScalar(1.7/h); model.rotation.y=MODEL_OFFSET; wrap.updateMatrixWorld(true);
-    box=new THREE.Box3().setFromObject(model); model.position.y-=box.min.y; wrap.updateMatrixWorld(true);
-    docente=wrap;
-    document.getElementById('btnDocente').classList.add('on'); padVis(); docLoading=false;
-    // huesos para una caminata por código (se SUMA a la pose de pie, sin voltear el modelo)
-    docBones={}; let laBone=null, raBone=null;
-    model.traverse(o=>{ if(o.isBone){ const b=o.name.replace(/_\d+$/,'');
-      if(['LeftUpLeg','RightUpLeg','LeftLeg','RightLeg'].includes(b)) docBones[b]={bone:o,x:o.rotation.x};
-      if(b==='LeftArm') laBone=o; if(b==='RightArm') raBone=o; } });
-    // bajar los brazos pegados al cuerpo (rotación en espacio-mundo, eje frontal)
-    wrap.updateMatrixWorld(true); const _ax=new THREE.Vector3(0,0,1);
-    if(laBone) laBone.rotateOnWorldAxis(_ax,-1.75); if(raBone) raBone.rotateOnWorldAxis(_ax,1.75);
-    toast('Docente lista · camina con ← ↑ ↓ →');
-  }, undefined, e=>{ docLoading=false; console.error(e); toast('No se pudo cargar el modelo de la docente'); });
-}
-function removeDocente(){ if(!docente) return; scene.remove(docente); docente.traverse(o=>{ if(o.isMesh) o.geometry?.dispose?.(); }); docente=null; docBones=null;
-  document.getElementById('btnDocente').classList.remove('on'); padVis(); }
-function toggleDocente(){ docente? removeDocente(): placeDocente(); }
-function updateDocente(dt){
-  const tr=2.0*dt, sp=1.5*dt; let moving=false;
-  if(keys.has('ArrowLeft')) docenteYaw+=tr; if(keys.has('ArrowRight')) docenteYaw-=tr;
-  docente.rotation.y=docenteYaw;
-  const f=new THREE.Vector3(-Math.sin(docenteYaw),0,-Math.cos(docenteYaw));
-  if(keys.has('ArrowUp')){ docente.position.addScaledVector(f,sp); moving=true; }
-  if(keys.has('ArrowDown')){ docente.position.addScaledVector(f,-sp); moving=true; }
-  if(moving) docPhase+=dt*8;
-  const sw=moving? Math.sin(docPhase)*0.5 : 0;
-  if(docBones){ const S=(n,v)=>{ const d=docBones[n]; if(d) d.bone.rotation.x=d.x+v; };
-    S('LeftUpLeg',sw); S('RightUpLeg',-sw); S('LeftLeg',Math.max(0,-sw)*0.7); S('RightLeg',Math.max(0,sw)*0.7); }
-  docente.position.y = moving? Math.abs(Math.sin(docPhase))*0.03 : 0;
-}
 document.getElementById('btnFP').onclick=toggleFP;
-document.getElementById('btnDocente').onclick=toggleDocente;
 document.querySelectorAll('#walkPad [data-mv]').forEach(b=>{ const k=b.dataset.mv;
   const dn=e=>{e.preventDefault(); keys.add(k);}; const up=()=>keys.delete(k);
   b.addEventListener('pointerdown',dn); b.addEventListener('pointerup',up); b.addEventListener('pointerleave',up); b.addEventListener('pointercancel',up); });
@@ -1036,7 +974,7 @@ window.addEventListener('blur',()=>keys.clear());
 /* ============================ Loop / resize =========================== */
 function resize(){ const r=canvas.parentElement.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/r.height; camera.updateProjectionMatrix(); }
 new ResizeObserver(resize).observe(canvas.parentElement); resize();
-(function loop(){ requestAnimationFrame(loop); const dt=Math.min(0.05,clock.getDelta()); if(fpMode) updateFP(dt); else controls.update(); if(docente && !fpMode) updateDocente(dt); sun.target.position.copy(controls.target); renderer.render(scene,camera); })();
+(function loop(){ requestAnimationFrame(loop); const dt=Math.min(0.05,clock.getDelta()); if(fpMode) updateFP(dt); else controls.update(); sun.target.position.copy(controls.target); renderer.render(scene,camera); })();
 
 /* ============================ Toast =========================== */
 let toastT; const toastEl=document.getElementById('toast');
