@@ -999,7 +999,13 @@ function placeDocente(){
     docente=wrap;
     document.getElementById('btnDocente').classList.add('on'); padVis(); docLoading=false;
     // huesos para una caminata por código (se SUMA a la pose de pie, sin voltear el modelo)
-    docBones={}; model.traverse(o=>{ if(o.isBone){ const b=o.name.replace(/_\d+$/,''); if(['LeftUpLeg','RightUpLeg','LeftLeg','RightLeg','LeftArm','RightArm'].includes(b)) docBones[b]={bone:o,x:o.rotation.x}; } });
+    docBones={}; let laBone=null, raBone=null;
+    model.traverse(o=>{ if(o.isBone){ const b=o.name.replace(/_\d+$/,'');
+      if(['LeftUpLeg','RightUpLeg','LeftLeg','RightLeg'].includes(b)) docBones[b]={bone:o,x:o.rotation.x};
+      if(b==='LeftArm') laBone=o; if(b==='RightArm') raBone=o; } });
+    // bajar los brazos pegados al cuerpo (rotación en espacio-mundo, eje frontal)
+    wrap.updateMatrixWorld(true); const _ax=new THREE.Vector3(0,0,1);
+    if(laBone) laBone.rotateOnWorldAxis(_ax,-1.75); if(raBone) raBone.rotateOnWorldAxis(_ax,1.75);
     toast('Docente lista · camina con ← ↑ ↓ →');
   }, undefined, e=>{ docLoading=false; console.error(e); toast('No se pudo cargar el modelo de la docente'); });
 }
@@ -1016,8 +1022,7 @@ function updateDocente(dt){
   if(moving) docPhase+=dt*8;
   const sw=moving? Math.sin(docPhase)*0.5 : 0;
   if(docBones){ const S=(n,v)=>{ const d=docBones[n]; if(d) d.bone.rotation.x=d.x+v; };
-    S('LeftUpLeg',sw); S('RightUpLeg',-sw); S('LeftLeg',Math.max(0,-sw)*0.7); S('RightLeg',Math.max(0,sw)*0.7);
-    S('LeftArm',-sw*0.6); S('RightArm',sw*0.6); }
+    S('LeftUpLeg',sw); S('RightUpLeg',-sw); S('LeftLeg',Math.max(0,-sw)*0.7); S('RightLeg',Math.max(0,sw)*0.7); }
   docente.position.y = moving? Math.abs(Math.sin(docPhase))*0.03 : 0;
 }
 document.getElementById('btnFP').onclick=toggleFP;
